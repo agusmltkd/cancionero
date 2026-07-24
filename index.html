@@ -331,6 +331,7 @@ main{padding:16px var(--pad) 90px}
 .tocar-cuerpo .l-ac{color:var(--albero);font-weight:600}
 .tocar-cuerpo .l-sec{color:var(--azulejo);font-weight:600}
 .tocar-cuerpo .l-le{color:#efe3d6}
+.tocar-cuerpo .l-tab{color:#8FB8CC;font-size:var(--tab-fs,inherit);letter-spacing:-.02em}
 .tocar-vacio{font-family:var(--body);white-space:normal;color:var(--muted);font-size:14px}
 .tocar-pie{
   position:absolute;left:0;right:0;bottom:0;
@@ -567,7 +568,7 @@ main{padding:16px var(--pad) 90px}
       </div>
       <textarea id="fLetra" spellcheck="false" style="font-family:var(--mono);font-size:13px;min-height:150px;white-space:pre" placeholder="Mi          Do#m
 Se me va la vida, se me va..."></textarea>
-      <p class="aviso">Pega la letra con los acordes en la línea de encima. Se detectan solos, y el modo tocar los transporta contigo.</p></div>
+      <p class="aviso">Pega la letra con los acordes en la línea de encima, o directamente la tablatura. Se detectan solas: los acordes y los trastes se transportan contigo.</p></div>
 
     <div class="campo"><label for="fNotas">Notas</label>
       <textarea id="fNotas" placeholder="Estructura, remates, dónde entra el capo, lo que se te atraganta…"></textarea></div>
@@ -784,9 +785,37 @@ function transportarLinea(linea,n){
   }
   return partes.join('');
 }
+function esLineaTab(l){
+  const t=String(l);
+  if(t.indexOf('-')<0) return false;
+  const cuerpo=t.replace(/^\s*[a-gA-G][#b♯♭]?\s*\|?/,'').replace(/\s/g,'');
+  if(cuerpo.length<6) return false;
+  const guiones=(cuerpo.match(/-/g)||[]).length;
+  const validos=(cuerpo.match(/[-0-9|hpbrsxX~\/\\().*^t]/g)||[]).length;
+  return guiones>=4 && validos/cuerpo.length>0.9;
+}
+function transportarTab(linea,n){
+  if(!n) return linea;
+  const nums=[...String(linea).matchAll(/\d+/g)];
+  if(!nums.length || nums.some(m=>(+m[0]+n)<0)) return linea;
+  let res='', pos=0;
+  for(const m of nums){
+    res += linea.slice(pos, m.index);
+    const nuevo = String(+m[0]+n);
+    res += nuevo;
+    pos = m.index + m[0].length;
+    const dif = nuevo.length - m[0].length;
+    if(dif>0){ let q=0; while(q<dif && linea[pos]==='-'){ pos++; q++; } }
+    else if(dif<0) res += '-'.repeat(-dif);
+  }
+  return res + linea.slice(pos);
+}
+const tieneTab = c => String(c.letra||'').split('\n').some(esLineaTab);
+
 function pintarLetra(cont, texto, n){
   const lineas=String(texto||'').split('\n');
   cont.innerHTML = lineas.map(l=>{
+    if(esLineaTab(l)) return `<div class="l-tab">${esc(transportarTab(l,n))}</div>`;
     if(/^\s*[[(].{1,28}[\])]\s*$/.test(l) && !esLineaAcordes(l)) return `<div class="l-sec">${esc(l)}</div>`;
     if(esLineaAcordes(l)) return `<div class="l-ac">${esc(transportarLinea(l,n))}</div>`;
     return `<div class="l-le">${l.trim()?esc(l):'&nbsp;'}</div>`;
@@ -872,7 +901,8 @@ function cancionesVisibles(){
   const q = filtro.texto.trim().toLowerCase();
   if(q) l = l.filter(c=>{
     const acs = acordesDe(c).map(a=>textoAcorde(a)+' '+a.r+a.q).join(' ');
-    return ((c.titulo||'')+' '+(c.artista||'')+' '+(c.tono||'')+' '+acs).toLowerCase().includes(q);
+    const extra = tieneTab(c) ? ' tablatura tab' : '';
+    return ((c.titulo||'')+' '+(c.artista||'')+' '+(c.tono||'')+' '+acs+extra).toLowerCase().includes(q);
   });
   if(filtro.estados.size){
     l = l.filter(c=>{
@@ -957,6 +987,7 @@ function abrirFicha(id){
           ${c.tono?`<span class="dato">Tono <b>${esc(c.tono)}</b></span>`:''}
           ${c.cejilla?`<span class="dato">Cejilla <b>${c.cejilla}</b></span>`:''}
           ${c.patron?.bpm?`<span class="dato">Tempo <b>${c.patron.bpm}</b></span>`:''}
+          ${tieneTab(c)?'<span class="dato" style="color:#8FB8CC">Tablatura</span>':''}
           ${c.dificultad?`<span class="dato">Dificultad <b>${'●'.repeat(c.dificultad)}${'○'.repeat(5-c.dificultad)}</b></span>`:''}
         </div>
         <p class="aviso">Tocada por última vez: ${cuandoTexto}.</p>
@@ -1438,7 +1469,11 @@ function pintarTocar(){
   if(!c){ cerrarTocar(); return; }
   cancionTocando = c;
   $('#tocarTitulo').textContent = c.titulo || 'Sin título';
-  const trozos = [c.artista, tonalidadDe(c)?('suena en '+tonalidadDe(c)):'', pistaCejilla(c)].filter(Boolean);
+  const desp = desplazamiento(c);
+  const tabAtascada = desp<0 && String(c.letra||'').split('\n').some(l=>
+    esLineaTab(l) && [...l.matchAll(/\d+/g)].some(m=>(+m[0]+desp)<0));
+  const trozos = [c.artista, tonalidadDe(c)?('suena en '+tonalidadDe(c)):'', pistaCejilla(c),
+    tabAtascada?'la tablatura no baja más: se queda como está':''].filter(Boolean);
   $('#tocarSub').textContent = (cola.length>1 ? `${posCola+1} de ${cola.length} · ` : '') + trozos.join(' · ');
   $('#tocarNav').classList.toggle('oculto', cola.length<2);
   $('#tonoValor').textContent = ((c.transporte||0)>0?'+':'')+(c.transporte||0);
@@ -1446,10 +1481,20 @@ function pintarTocar(){
   $('#velValor').textContent = velScroll;
   const cuerpo = $('#tocarCuerpo');
   cuerpo.style.fontSize = tamLetra+'px';
+  ajustarTab(cuerpo, c);
   if(c.letra) pintarLetra(cuerpo, c.letra, desplazamiento(c));
   else cuerpo.innerHTML = `<div class="l-ac">${esc(acordesDe(c).map(a=>textoAcorde(a)).join('   '))}</div>`+
     `<div class="tocar-vacio">Esta canción no tiene letra guardada. Edítala y pega la letra con los acordes en la línea de encima para verla aquí.</div>`;
   cuerpo.scrollTop = 0;
+}
+function ajustarTab(cont, c){
+  const lineas = String(c.letra||'').split('\n').filter(esLineaTab);
+  if(!lineas.length){ cont.style.removeProperty('--tab-fs'); return; }
+  const largo = Math.max(...lineas.map(l=>l.length));
+  const ancho = cont.clientWidth - 24;
+  if(!(ancho>0) || !largo){ cont.style.removeProperty('--tab-fs'); return; }
+  const px = Math.floor(ancho/(largo*0.601));
+  cont.style.setProperty('--tab-fs', Math.max(8, Math.min(tamLetra, px))+'px');
 }
 function cerrarTocar(){
   if(scrollActivo) alternarScroll();
@@ -1500,8 +1545,9 @@ $('#tonoMenos').onclick = ()=>cambiaTono(-1);
 $('#tonoMas').onclick = ()=>cambiaTono(1);
 $('#cejaMenos').onclick = ()=>cambiaCejilla(-1);
 $('#cejaMas').onclick = ()=>cambiaCejilla(1);
-$('#letraMenos').onclick = ()=>{ tamLetra=Math.max(11,tamLetra-1); $('#tocarCuerpo').style.fontSize=tamLetra+'px'; };
-$('#letraMas').onclick = ()=>{ tamLetra=Math.min(30,tamLetra+1); $('#tocarCuerpo').style.fontSize=tamLetra+'px'; };
+$('#letraMenos').onclick = ()=>{ tamLetra=Math.max(11,tamLetra-1); $('#tocarCuerpo').style.fontSize=tamLetra+'px'; if(cancionTocando) ajustarTab($('#tocarCuerpo'),cancionTocando); };
+$('#letraMas').onclick = ()=>{ tamLetra=Math.min(30,tamLetra+1); $('#tocarCuerpo').style.fontSize=tamLetra+'px'; if(cancionTocando) ajustarTab($('#tocarCuerpo'),cancionTocando); };
+window.addEventListener('resize', ()=>{ if(cancionTocando) ajustarTab($('#tocarCuerpo'),cancionTocando); });
 $('#velMenos').onclick = ()=>{ velScroll=Math.max(5,velScroll-5); $('#velValor').textContent=velScroll; };
 $('#velMas').onclick = ()=>{ velScroll=Math.min(120,velScroll+5); $('#velValor').textContent=velScroll; };
 $('#tocarAnterior').onclick = ()=>{ if(posCola>0){ if(scrollActivo) alternarScroll(); posCola--; pintarTocar(); } };
