@@ -10,7 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=2">
+<link rel="apple-touch-icon" href="icon-192.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -558,6 +559,11 @@ main{padding:16px var(--pad) 90px}
     </div>
 
     <div class="campo"><label for="fLetra">Letra con acordes</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="btnPegarLetra">Pegar y ordenar</button>
+        <button class="btn ghost" id="btnOrdenarLetra">Ordenar lo pegado</button>
+        <button class="btn ghost" id="btnBuscarLetra">Buscar acordes ↗</button>
+      </div>
       <textarea id="fLetra" spellcheck="false" style="font-family:var(--mono);font-size:13px;min-height:150px;white-space:pre" placeholder="Mi          Do#m
 Se me va la vida, se me va..."></textarea>
       <p class="aviso">Pega la letra con los acordes en la línea de encima. Se detectan solos, y el modo tocar los transporta contigo.</p></div>
@@ -718,7 +724,8 @@ const SOS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const BEM=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const ES2EN={Do:'C',Re:'D',Mi:'E',Fa:'F',Sol:'G',La:'A',Si:'B'};
 const RAIZ_RE='(?:Sol|Do|Re|Mi|Fa|La|Si|[A-G])(?:#|♯|b|♭)?';
-const ACORDE_RE=new RegExp('^('+RAIZ_RE+')([^\\s/]*)(?:/('+RAIZ_RE+'))?$');
+const SUF_RE='(?:maj|min|dim|aug|sus|add|alt|M|m|°|º|Δ|\\+|-|[0-9]|#|b|♯|♭|\\(|\\))*';
+const ACORDE_RE=new RegExp('^('+RAIZ_RE+')('+SUF_RE+')(?:/('+RAIZ_RE+'|\\d+))?$');
 const NO_ACORDE=/^(\||\|\||x\d+|\(x\d+\)|-|:|%|N\.?C\.?)$/i;
 
 function normRaiz(r){
@@ -1241,6 +1248,58 @@ $('#btnBuscarPortada').onclick = async ()=>{
     av.textContent='No se ha podido buscar (sin conexión o bloqueado). Sube una imagen desde el móvil.';
     res.classList.add('oculto');
   }
+};
+
+/* --- pegar y ordenar la letra --- */
+const SECCIONES=/^\s*(intro|introducci[oó]n|verso|estrofa|pre[\s-]?estribillo|estribillo|coro|puente|solo|instrumental|final|outro|bridge|chorus|verse|interlude)\s*\d?\s*:?\s*$/i;
+const BASURA=/^\s*(tabbed by|transcri|chords by|tab by|acordes por|https?:\/\/|www\.)/i;
+
+function limpiarLetra(txt){
+  let lineas = String(txt||'').replace(/\r\n?/g,'\n').replace(/\t/g,'    ').split('\n');
+  let capo = null;
+  lineas = lineas.filter(li=>{
+    const m = li.match(/^\s*(capo|cejilla|traste)\D{0,12}(\d{1,2})\s*$/i);
+    if(m){ capo = +m[2]; return false; }
+    return !BASURA.test(li);
+  }).map(li=>{
+    const t = li.replace(/\s+$/,'');
+    return SECCIONES.test(t) ? '['+t.trim().replace(/:$/,'')+']' : t;
+  });
+  const salida=[]; let blancos=0;
+  for(const li of lineas){
+    if(!li.trim()){ blancos++; if(blancos>1) continue; } else blancos=0;
+    salida.push(li);
+  }
+  while(salida.length && !salida[0].trim()) salida.shift();
+  while(salida.length && !salida[salida.length-1].trim()) salida.pop();
+  return {texto:salida.join('\n'), capo};
+}
+function aplicarLimpieza(txt){
+  const r = limpiarLetra(txt);
+  $('#fLetra').value = r.texto;
+  if(r.capo!=null && r.capo<=12){ $('#fCejilla').value = String(r.capo); return r.capo; }
+  return null;
+}
+$('#btnOrdenarLetra').onclick = ()=>{
+  if(!$('#fLetra').value.trim()){ aviso('Primero pega la letra en el recuadro.'); return; }
+  const capo = aplicarLimpieza($('#fLetra').value);
+  aviso(capo!=null ? `Ordenada. He puesto la cejilla en ${capo}.` : 'Letra ordenada.');
+};
+$('#btnPegarLetra').onclick = async ()=>{
+  try{
+    const t = await navigator.clipboard.readText();
+    if(!t || !t.trim()){ aviso('El portapapeles está vacío.'); return; }
+    const capo = aplicarLimpieza(t);
+    aviso(capo!=null ? `Pegada. He puesto la cejilla en ${capo}.` : 'Letra pegada y ordenada.');
+  }catch(e){
+    $('#fLetra').focus();
+    aviso('El navegador no me deja leer el portapapeles: pega tú y pulsa «Ordenar lo pegado».');
+  }
+};
+$('#btnBuscarLetra').onclick = ()=>{
+  const t=$('#fTitulo').value.trim(), a=$('#fArtista').value.trim();
+  if(!t){ aviso('Escribe primero el título.'); return; }
+  window.open('https://www.google.com/search?q='+encodeURIComponent(`${t} ${a} acordes letra`), '_blank', 'noopener');
 };
 
 /* --- guardar / borrar --- */

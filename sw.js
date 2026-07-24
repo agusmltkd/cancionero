@@ -1,6 +1,6 @@
-const CACHE = 'cancionero-v2';
+const CACHE = 'cancionero-v3';
 const BASE = self.registration.scope;
-const ESENCIALES = ['', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'].map(p => BASE + p);
+const ESENCIALES = ['', 'index.html', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png'].map(p => BASE + p);
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ESENCIALES)).then(() => self.skipWaiting()));
