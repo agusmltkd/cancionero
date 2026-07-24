@@ -310,6 +310,43 @@ main{padding:16px var(--pad) 90px}
 .campo input.tabcel.lleno{background:#16262e}
 @media(max-width:640px){ .campo input.tabcel{font-size:16px;width:30px} }
 
+/* ---------- mástil de entrada ---------- */
+.mastil-cab{
+  display:flex;align-items:center;gap:10px;margin-bottom:8px;
+  font-size:12px;color:var(--muted);
+}
+.mastil-cab span{flex:1;min-width:0}
+.mastil-cab b{color:var(--albero);font-family:var(--mono)}
+.mastil-cab .btn{padding:5px 10px;font-size:11.5px}
+.mastil{overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.mastil-cuerpo{display:inline-block;min-width:100%}
+.mastil-fila{display:flex;align-items:stretch}
+.mastil-fila .etq{
+  width:20px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+}
+.traste{
+  flex:1 0 27px;min-width:27px;height:26px;position:relative;
+  border-right:1px solid #2f251f;
+  background:linear-gradient(to bottom,transparent 46%,#4a3c33 46%,#4a3c33 54%,transparent 54%);
+  font-family:var(--mono);font-size:11px;color:transparent;
+}
+.traste.aire{flex:0 0 24px;min-width:24px;border-right:3px solid #6b5748;background:none}
+.traste:active{background-color:rgba(233,178,60,.25)}
+.traste.suena{
+  background-color:var(--albero);color:#16110E;font-weight:600;
+  border-radius:4px;
+}
+.mastil-num{display:flex;margin-top:3px}
+.mastil-num .etq{width:20px;flex:none}
+.mastil-num span{
+  flex:1 0 27px;min-width:27px;text-align:center;
+  font-family:var(--mono);font-size:9.5px;color:#6f5c50;
+}
+.mastil-num span.aire{flex:0 0 24px;min-width:24px}
+.mastil-num span.punto{color:var(--albero)}
+.campo input.tabcel.cursor{border-color:var(--albero);box-shadow:inset 0 0 0 1px var(--albero)}
+
 /* ---------- panel repertorio ---------- */
 .tarjetas-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
 .num{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface)}
@@ -589,6 +626,16 @@ main{padding:16px var(--pad) 90px}
         <button class="btn ghost" id="btnAbrirTab">Escribir tablatura</button>
       </div>
       <div class="tab-editor oculto" id="tabEditor">
+        <div class="mastil-cab">
+          <span id="tabNota">Toca el mástil para ir escribiendo</span>
+          <button class="btn ghost" id="btnVentanaTrastes">Trastes 0-12</button>
+        </div>
+        <div class="mastil" id="mastil"></div>
+        <div class="compas-pie" style="margin:10px 0 12px">
+          <button class="btn ghost" id="btnTabAcorde" aria-pressed="false">Acorde</button>
+          <button class="btn ghost" id="btnTabAtras">← Borrar</button>
+          <button class="btn ghost" id="btnTabHueco">Hueco →</button>
+        </div>
         <div class="tab-rejilla" id="tabRejilla"></div>
         <div class="compas-pie" style="margin-top:10px">
           <button class="btn cta" id="btnInsertarTab">Insertar en la letra</button>
@@ -1196,6 +1243,8 @@ function abrirEditor(c){
   $('#fCejilla').innerHTML = Array.from({length:13},(_,i)=>
     `<option value="${i}" ${borrador.cejilla===i?'selected':''}>${i===0?'Sin cejilla':'Traste '+i}</option>`).join('');
   tabCols=16; tabRejilla=nuevaRejilla(tabCols); cursorLetra=null;
+  tabCursor=0; tabAcorde=false; tabDesde=0;
+  $('#btnTabAcorde').setAttribute('aria-pressed','false'); $('#btnTabAcorde').classList.remove('cta');
   $('#tabEditor').classList.add('oculto'); $('#btnAbrirTab').textContent='Escribir tablatura';
   $('#resultadosPortada').classList.add('oculto');
   $('#avisoPortada').classList.add('oculto');
@@ -1372,13 +1421,77 @@ const CUERDAS=['e','B','G','D','A','E'];
 let tabCols=16, tabRejilla=null, cursorLetra=null;
 
 function nuevaRejilla(cols){ return CUERDAS.map(()=>Array(cols).fill('')); }
+
+/* --- mástil --- */
+const MIDI_CUERDA=[64,59,55,50,45,40];           // mi agudo → mi grave
+const PC=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const PUNTOS=[3,5,7,9,12,15,17,19,21,24];
+let tabCursor=0, tabAcorde=false, tabDesde=0;
+
+function pintarMastil(){
+  const cont=$('#mastil');
+  const trastes=Array.from({length:13},(_,i)=>tabDesde+i);
+  cont.innerHTML='<div class="mastil-cuerpo">'+
+    CUERDAS.map((n,f)=>'<div class="mastil-fila"><span class="etq">'+n+'</span>'+
+      trastes.map(t=>`<button class="traste ${t===0?'aire':''}" data-f="${f}" data-t="${t}"
+        aria-label="cuerda ${n} traste ${t}">${t}</button>`).join('')+'</div>').join('')+
+    '<div class="mastil-num"><span class="etq"></span>'+
+      trastes.map(t=>`<span class="${t===0?'aire ':''}${PUNTOS.includes(t)?'punto':''}">${t}</span>`).join('')+
+    '</div></div>';
+  $$('.traste',cont).forEach(b=>b.onclick=()=>pulsarTraste(+b.dataset.f,+b.dataset.t,b));
+  $('#btnVentanaTrastes').textContent='Trastes '+tabDesde+'-'+(tabDesde+12);
+}
+function nombreNota(f,t){
+  const midi=MIDI_CUERDA[f]+t;
+  return nombreRaiz(PC[((midi%12)+12)%12]);
+}
+function pulsarTraste(f,t,boton){
+  if(tabCursor>=tabCols){ tabCols+=8; tabRejilla.forEach(fila=>{ while(fila.length<tabCols) fila.push(''); }); pintarRejillaTab(); }
+  tabRejilla[f][tabCursor]=String(t);
+  sonarNota(MIDI_CUERDA[f]+t);
+  $('#tabNota').innerHTML='<b>'+esc(nombreNota(f,t))+'</b> · cuerda '+CUERDAS[f]+', traste '+t;
+  if(boton){ boton.classList.add('suena'); setTimeout(()=>boton.classList.remove('suena'),260); }
+  if(!tabAcorde) tabCursor++;
+  pintarRejillaTab();
+}
+function sonarNota(midi){
+  let ac;
+  try{ ac=ctxAudio(); }catch(e){ return; }
+  const fr=440*Math.pow(2,(midi-69)/12), t=ac.currentTime+0.01;
+  const o=ac.createOscillator(), o2=ac.createOscillator(), g=ac.createGain(), g2=ac.createGain();
+  o.type='triangle'; o.frequency.value=fr;
+  o2.type='sine'; o2.frequency.value=fr*2; g2.gain.value=0.22;
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(.32,t+.006);
+  g.gain.exponentialRampToValueAtTime(.0001,t+1.1);
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(ac.destination);
+  o.start(t); o2.start(t); o.stop(t+1.2); o2.stop(t+1.2);
+}
+$('#btnVentanaTrastes').onclick=()=>{ tabDesde = tabDesde===0 ? 12 : 0; pintarMastil(); };
+$('#btnTabAcorde').onclick=e=>{
+  tabAcorde=!tabAcorde;
+  e.currentTarget.setAttribute('aria-pressed',tabAcorde);
+  e.currentTarget.classList.toggle('cta',tabAcorde);
+  $('#tabNota').textContent = tabAcorde
+    ? 'Modo acorde: las notas se apilan en la misma columna'
+    : 'Toca el mástil para ir escribiendo';
+};
+$('#btnTabHueco').onclick=()=>{
+  if(tabCursor>=tabCols){ tabCols+=8; tabRejilla.forEach(f=>{ while(f.length<tabCols) f.push(''); }); }
+  tabCursor++; pintarRejillaTab();
+};
+$('#btnTabAtras').onclick=()=>{
+  if(tabCursor>0 && !tabRejilla.some(f=>f[tabCursor])) tabCursor--;
+  tabRejilla.forEach(f=>f[tabCursor]='');
+  pintarRejillaTab();
+};
 function pintarRejillaTab(){
   const cont=$('#tabRejilla');
   cont.innerHTML = CUERDAS.map((n,f)=>
     `<div class="tab-fila"><span class="tab-cuerda">${n}</span>`+
     Array.from({length:tabCols},(_,c)=>{
       const v=tabRejilla[f][c]||'';
-      return `<input class="tabcel ${v?'lleno':''}" type="text" inputmode="numeric" maxlength="2"
+      return `<input class="tabcel ${v?'lleno':''} ${c===tabCursor?'cursor':''}" type="text" inputmode="numeric" maxlength="2"
         data-f="${f}" data-c="${c}" value="${v}" aria-label="cuerda ${n} posición ${c+1}">`;
     }).join('')+'</div>').join('');
   $$('.tabcel',cont).forEach(inp=>{
@@ -1389,8 +1502,11 @@ function pintarRejillaTab(){
       inp.classList.toggle('lleno', !!v);
       if(v.length===2 || (v.length===1 && +v>2)) siguienteCelda(inp);
     };
-    inp.onfocus=()=>inp.select();
+    inp.onfocus=()=>{ tabCursor=+inp.dataset.c; marcarCursor(); inp.select(); };
   });
+}
+function marcarCursor(){
+  $$('.tabcel').forEach(i=>i.classList.toggle('cursor', +i.dataset.c===tabCursor));
 }
 function siguienteCelda(inp){
   const f=+inp.dataset.f, c=+inp.dataset.c;
@@ -1418,7 +1534,7 @@ function abrirEditorTab(){
   const ed=$('#tabEditor'), abierto=!ed.classList.contains('oculto');
   ed.classList.toggle('oculto', abierto);
   $('#btnAbrirTab').textContent = abierto ? 'Escribir tablatura' : 'Cerrar tablatura';
-  if(!abierto) pintarRejillaTab();
+  if(!abierto){ pintarMastil(); pintarRejillaTab(); }
 }
 $('#btnAbrirTab').onclick=abrirEditorTab;
 $('#btnMasColumnas').onclick=()=>{
@@ -1426,7 +1542,7 @@ $('#btnMasColumnas').onclick=()=>{
   tabRejilla.forEach(f=>{ while(f.length<tabCols) f.push(''); });
   pintarRejillaTab();
 };
-$('#btnVaciarTab').onclick=()=>{ tabRejilla=nuevaRejilla(tabCols); pintarRejillaTab(); };
+$('#btnVaciarTab').onclick=()=>{ tabRejilla=nuevaRejilla(tabCols); tabCursor=0; pintarRejillaTab(); };
 $('#fLetra').addEventListener('blur', e=>{ cursorLetra=e.target.selectionStart; });
 $('#btnInsertarTab').onclick=()=>{
   if(!tabRejilla || !tabRejilla.some(f=>f.some(v=>v))){ aviso('La tablatura está vacía.'); return; }
@@ -1435,6 +1551,7 @@ $('#btnInsertarTab').onclick=()=>{
   const pos = (cursorLetra!=null && cursorLetra<=txt.length) ? cursorLetra : txt.length;
   ta.value = txt.slice(0,pos) + bloque + txt.slice(pos);
   cursorLetra = pos + bloque.length;
+  tabRejilla=nuevaRejilla(tabCols); tabCursor=0; pintarRejillaTab();
   aviso('Tablatura insertada en la letra.');
 };
 
