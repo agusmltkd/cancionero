@@ -562,6 +562,7 @@ main{padding:16px var(--pad) 90px}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <button class="btn" id="btnPegarLetra">Pegar y ordenar</button>
         <button class="btn ghost" id="btnOrdenarLetra">Ordenar lo pegado</button>
+        <button class="btn ghost" id="btnAcordesLetra">Sacar acordes</button>
         <button class="btn ghost" id="btnBuscarLetra">Buscar acordes ↗</button>
       </div>
       <textarea id="fLetra" spellcheck="false" style="font-family:var(--mono);font-size:13px;min-height:150px;white-space:pre" placeholder="Mi          Do#m
@@ -1302,6 +1303,45 @@ $('#btnBuscarLetra').onclick = ()=>{
   window.open('https://www.google.com/search?q='+encodeURIComponent(`${t} ${a} acordes letra`), '_blank', 'noopener');
 };
 
+/* --- sacar los acordes de la letra --- */
+function extraerAcordesDeLetra(txt){
+  const vistos=new Set(), lista=[];
+  for(const linea of String(txt||'').split('\n')){
+    if(!esLineaAcordes(linea)) continue;
+    for(const tk of linea.trim().split(/\s+/)){
+      const limpio=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+      const m=limpio.match(ACORDE_RE);
+      if(!m) continue;
+      const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
+               b:m[3]&&!/^\d+$/.test(m[3])?normRaiz(m[3]):null};
+      if(SEMI[a.r]===undefined) continue;
+      const k=idAcorde(a);
+      if(!vistos.has(k)){ vistos.add(k); lista.push(a); }
+    }
+  }
+  return lista;
+}
+$('#btnAcordesLetra').onclick=()=>{
+  const lista=extraerAcordesDeLetra($('#fLetra').value);
+  if(!lista.length){ aviso('No veo líneas de acordes en la letra.'); return; }
+  let nuevos=0;
+  lista.forEach(a=>{ if(!borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ borrador.acordes.push(a); nuevos++; } });
+  pintarElegidos();
+  aviso(nuevos ? `${nuevos} ${nuevos===1?'acorde sacado':'acordes sacados'} de la letra.` : 'Ya los tenías todos.');
+};
+
+/* --- título y artista desde la primera línea --- */
+function adivinarTituloArtista(txt){
+  for(const cruda of String(txt||'').split('\n').slice(0,3)){
+    const l=cruda.trim();
+    if(!l || esLineaAcordes(l) || /^\[/.test(l)) continue;
+    const m=l.match(/^(.{2,60}?)\s+[-–—]\s+(.{2,60})$/);
+    if(m) return {titulo:m[1].trim(), artista:m[2].trim(), linea:cruda};
+    break;
+  }
+  return null;
+}
+
 /* --- guardar / borrar --- */
 $('#btnGuardar').onclick = ()=>{
   const t=$('#fTitulo').value.trim();
@@ -1312,6 +1352,11 @@ $('#btnGuardar').onclick = ()=>{
     enlace:$('#fEnlace').value.trim(), notas:$('#fNotas').value, letra:$('#fLetra').value
   });
   borrador.patron.bpm = +$('#fBpm').value||90;
+  let autoAcordes=0;
+  if(!borrador.acordes.length && borrador.letra){
+    const lista=extraerAcordesDeLetra(borrador.letra);
+    if(lista.length){ borrador.acordes=lista; autoAcordes=lista.length; }
+  }
   if(editandoId){
     const i=estado.canciones.findIndex(c=>c.id===editandoId);
     if(i>=0) estado.canciones[i]=borrador;
@@ -1319,7 +1364,9 @@ $('#btnGuardar').onclick = ()=>{
     estado.canciones.push(borrador);
   }
   guardar(); pintarRejilla(); cerrarHoja('#hojaEditor');
-  aviso(editandoId ? 'Canción actualizada.' : 'Canción añadida al cancionero.');
+  aviso(editandoId ? 'Canción actualizada.'
+    : autoAcordes ? `Añadida, con ${autoAcordes} acordes sacados de la letra.`
+    : 'Canción añadida al cancionero.');
 };
 $('#btnBorrar').onclick = ()=>{
   if(!editandoId) return;
@@ -1619,6 +1666,36 @@ $$('#chipsEstado .chip').forEach(b=>b.onclick=()=>{
   pintarRejilla();
 });
 
+async function procesarEntrada(){
+  let texto=null;
+  if(location.hash.startsWith('#letra=')){
+    try{ texto=decodeURIComponent(location.hash.slice(7)); }catch(e){ texto=null; }
+    history.replaceState(null,'',location.pathname+location.search);
+  }else if(new URLSearchParams(location.search).has('pegar')){
+    history.replaceState(null,'',location.pathname);
+    try{ texto=await navigator.clipboard.readText(); }catch(e){
+      aviso('No he podido leer el portapapeles: abre una canción nueva y pulsa «Pegar y ordenar».');
+      return;
+    }
+  }
+  if(!texto || !texto.trim()) return;
+  abrirEditor(null);
+  const pista=adivinarTituloArtista(texto);
+  if(pista){
+    $('#fTitulo').value=pista.titulo;
+    $('#fArtista').value=pista.artista;
+    texto=texto.replace(pista.linea,'');
+  }
+  const r=limpiarLetra(texto);
+  $('#fLetra').value=r.texto;
+  if(r.capo!=null && r.capo<=12) $('#fCejilla').value=String(r.capo);
+  const lista=extraerAcordesDeLetra(r.texto);
+  lista.forEach(a=>borrador.acordes.push(a));
+  pintarElegidos(); pintarPrevia();
+  if(pista) $('#btnBuscarPortada').click();
+  aviso('Canción montada desde lo compartido: revisa y guarda.');
+}
+
 (async function arrancar(){
   const crudo = await Almacen.leer();
   if(crudo){
@@ -1631,6 +1708,7 @@ $$('#chipsEstado .chip').forEach(b=>b.onclick=()=>{
     }catch(e){}
   }
   refrescarNotacion();
+  procesarEntrada();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
