@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cancionero</title>
+<meta name="description" content="Directorio visual de las canciones que me sé con la guitarra: acordes, rasgueos y portadas.">
+<meta name="theme-color" content="#16110E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#16110E;
+  --surface:#201812;
+  --surface-2:#2A201A;
+  --line:#3B2C22;
+  --ink:#F6EDE2;
+  --muted:#A4907F;
+  --albero:#E9B23C;
+  --azulejo:#4E9CC4;
+  --granate:#B4485C;
+  --verde:#6FA87C;
+  --r:14px;
+  --pad:clamp(14px,3vw,28px);
+  --disp:"Fraunces",Georgia,serif;
+  --body:"Inter Tight",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #241a14 0%, transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+  min-height:100vh;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--albero);outline-offset:2px;border-radius:6px}
+::selection{background:var(--albero);color:#16110E}
+
+/* ---------- cabecera ---------- */
+.top{
+  position:sticky;top:0;z-index:40;
+  background:rgba(22,17,14,.86);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 12px;
+  display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;
+}
+.brand h1{
+  font-family:var(--disp);font-weight:800;
+  font-size:clamp(26px,5.5vw,40px);line-height:.95;margin:0;
+  letter-spacing:-.02em;
+}
+.brand h1 span{color:var(--albero)}
+.tag{margin:6px 0 0;color:var(--muted);font-size:12.5px;letter-spacing:.02em}
+.top .acciones{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line);background:var(--surface);
+  padding:9px 13px;border-radius:999px;font-size:13.5px;font-weight:500;
+  transition:border-color .15s, background .15s, transform .1s;
+}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn.cta{background:var(--albero);color:#16110E;border-color:var(--albero);font-weight:600}
+.btn.cta:hover{background:#f5c05a}
+.btn.ghost{background:transparent}
+.btn.peligro{color:var(--granate);border-color:#4a2a2f}
+
+/* ---------- filtros ---------- */
+.filtros{
+  padding:14px var(--pad) 4px;
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.buscador{position:relative;flex:1 1 240px;min-width:0}
+.buscador input{
+  width:100%;background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;padding:10px 14px 10px 36px;font-size:14px;
+}
+.buscador input::placeholder{color:#7d6c60}
+.buscador svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.55}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  border:1px solid var(--line);border-radius:999px;padding:7px 12px;
+  font-size:12.5px;color:var(--muted);background:var(--surface);
+  display:inline-flex;align-items:center;gap:6px;
+}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:currentColor;background:var(--surface-2)}
+.chip .pip{width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.e-aprendiendo[aria-pressed="true"]{color:var(--albero)}
+.chip.e-lase[aria-pressed="true"]{color:var(--azulejo)}
+.chip.e-pulida[aria-pressed="true"]{color:var(--verde)}
+select.orden{
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  padding:9px 12px;font-size:13px;
+}
+
+/* ---------- rejilla ---------- */
+main{padding:16px var(--pad) 90px}
+.rejilla{
+  display:grid;gap:16px;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+}
+@media(min-width:720px){.rejilla{gap:22px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
+.card{
+  text-align:left;width:100%;display:flex;flex-direction:column;gap:9px;
+  transition:transform .18s cubic-bezier(.2,.8,.3,1);
+}
+.card:hover,.card:focus-visible{transform:translateY(-4px)}
+.funda{
+  position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  background:var(--surface-2);border:1px solid var(--line);
+  box-shadow:0 10px 24px rgba(0,0,0,.45);
+}
+.funda img{width:100%;height:100%;object-fit:cover;display:block}
+.funda .estado{
+  position:absolute;top:8px;left:8px;z-index:2;
+  width:9px;height:9px;border-radius:50%;
+  box-shadow:0 0 0 3px rgba(22,17,14,.6);
+}
+.funda .fav{
+  position:absolute;top:6px;right:6px;z-index:2;font-size:14px;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+}
+.funda .compasito{
+  position:absolute;left:0;right:0;bottom:0;z-index:2;
+  display:flex;gap:2px;padding:7px 8px;overflow:hidden;justify-content:center;
+  background:linear-gradient(to top,rgba(11,8,6,.88),transparent);
+  font-family:var(--mono);font-size:11px;line-height:1;color:#f0e4d6;
+}
+.card h3{
+  margin:0;font-size:14.5px;font-weight:600;line-height:1.25;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+}
+.card .art{margin:0;font-size:12.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .acs{display:flex;gap:4px;flex-wrap:wrap;margin-top:1px}
+.ac{
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  border:1px solid var(--line);border-radius:5px;padding:2px 5px;
+  color:#dbc9b7;background:#1b1410;white-space:nowrap;
+}
+.ac.mas{color:var(--muted);border-style:dashed}
+
+.vacio{
+  border:1px dashed var(--line);border-radius:var(--r);
+  padding:44px 22px;text-align:center;color:var(--muted);
+}
+.vacio h2{font-family:var(--disp);font-weight:600;color:var(--ink);margin:0 0 8px;font-size:22px}
+.vacio p{margin:0 0 18px;font-size:14px}
+
+/* ---------- hoja modal ---------- */
+.hoja{
+  position:fixed;inset:0;z-index:60;display:none;
+  background:rgba(10,7,5,.72);backdrop-filter:blur(3px);
+}
+.hoja.abierta{display:block}
+.hoja .panel{
+  position:absolute;left:0;right:0;bottom:0;top:auto;max-height:94dvh;
+  background:var(--bg);border-top:1px solid var(--line);
+  border-radius:20px 20px 0 0;overflow:auto;overscroll-behavior:contain;
+  animation:sube .26s cubic-bezier(.2,.9,.3,1);
+  padding:0 var(--pad) calc(30px + env(safe-area-inset-bottom));
+}
+@media(min-width:800px){
+  .hoja .panel{
+    left:50%;transform:translateX(-50%);width:min(760px,94vw);
+    top:3vh;bottom:3vh;max-height:none;border:1px solid var(--line);border-radius:18px;
+  }
+}
+@keyframes sube{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@media(min-width:800px){@keyframes sube{from{opacity:0}to{opacity:1}}}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+.hoja .barra{
+  position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:14px 0 12px;margin-bottom:2px;
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);
+}
+.hoja .barra h2{font-family:var(--disp);font-weight:600;font-size:19px;margin:0;flex:1;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:520px){
+  .hoja .barra .btn{padding:8px 10px;font-size:12.5px}
+  .top .acciones{width:100%;margin-left:0}
+  .top .acciones .btn{flex:0 1 auto}
+}
+.cerrar{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);font-size:16px;line-height:1}
+
+/* ---------- ficha ---------- */
+.ficha-cab{display:flex;gap:16px;padding:18px 0 14px;flex-wrap:wrap}
+.ficha-cab .funda{width:min(180px,38vw);flex:none}
+.ficha-cab .meta{flex:1 1 200px;min-width:0}
+.ficha-cab h3{font-family:var(--disp);font-weight:600;font-size:clamp(20px,4vw,28px);margin:0 0 4px;line-height:1.1}
+.ficha-cab .art{color:var(--muted);margin:0 0 12px;font-size:14px}
+.datos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.dato{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;color:var(--muted)}
+.dato b{color:var(--ink);font-weight:600;font-family:var(--mono);font-size:12.5px}
+.bloque{padding:16px 0;border-top:1px solid var(--line)}
+.bloque > h4{
+  margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;
+}
+.acs-grandes{display:flex;gap:7px;flex-wrap:wrap}
+.acs-grandes .ac{font-size:15px;padding:7px 11px;border-radius:8px;background:var(--surface)}
+.notas{white-space:pre-wrap;font-size:14.5px;line-height:1.55;color:#e2d5c8;margin:0}
+
+/* ---------- compás / rasgueo ---------- */
+.compas{
+  display:flex;gap:3px;align-items:stretch;overflow-x:auto;padding:4px 0 8px;
+}
+.cel{
+  flex:1 0 34px;min-width:34px;height:56px;border-radius:8px;
+  border:1px solid var(--line);background:#1b1410;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:19px;line-height:1;color:#efe1d2;
+  position:relative;transition:background .12s,border-color .12s;
+}
+.cel .n{position:absolute;top:4px;font-size:9px;color:#6f5c50}
+.cel.vacia{color:#4a3c33}
+.cel.tiempo{border-left-color:var(--muted)}
+.cel[data-v="D"]{background:#2c2115;border-color:#5a4425;color:var(--albero)}
+.cel[data-v="U"]{background:#16262e;border-color:#2f5468;color:var(--azulejo)}
+.cel[data-v="X"]{background:#2b1a1e;border-color:#5a3038;color:var(--granate)}
+.cel[data-v="G"]{background:#1c2a1f;border-color:#33543c;color:var(--verde)}
+.cel.suena{box-shadow:inset 0 0 0 2px var(--ink)}
+.compas-pie{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.leyenda{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:6px}
+.leyenda span b{font-family:var(--mono);color:var(--ink);font-weight:600}
+
+/* ---------- formulario ---------- */
+.campo{margin:14px 0}
+.campo label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:6px;font-weight:600}
+.campo input[type=text],.campo input[type=url],.campo input[type=number],.campo select,.campo textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:11px 12px;font-size:15px;
+}
+.campo textarea{min-height:90px;resize:vertical;line-height:1.5}
+.fila{display:flex;gap:12px;flex-wrap:wrap}
+.fila > .campo{flex:1 1 130px;margin-top:0}
+.raices{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+@media(min-width:560px){.raices{grid-template-columns:repeat(12,1fr)}}
+.raiz{
+  border:1px solid var(--line);border-radius:8px;padding:9px 2px;background:var(--surface);
+  font-family:var(--mono);font-size:13px;text-align:center;
+}
+.raiz.neg{background:#150f0c;color:#c9b6a5}
+.raiz[aria-pressed="true"]{background:var(--albero);color:#16110E;border-color:var(--albero);font-weight:600}
+.calidades{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.cal{border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-family:var(--mono);font-size:12.5px;background:var(--surface)}
+.cal[aria-pressed="true"]{background:var(--azulejo);color:#0f1a20;border-color:var(--azulejo);font-weight:600}
+.pestanas{display:flex;gap:4px;margin:12px 0 2px;border-bottom:1px solid var(--line)}
+.pest{padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.pest[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--albero)}
+.elegidos{display:flex;gap:6px;flex-wrap:wrap;min-height:34px;align-items:center}
+.elegidos .ac{font-size:13px;padding:6px 8px;display:inline-flex;gap:6px;align-items:center}
+.elegidos .ac button{color:var(--muted);font-size:13px;line-height:1}
+.elegidos .ac button:hover{color:var(--granate)}
+.vacio-min{color:#6f5c50;font-size:13px}
+.pie-form{
+  position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);
+  padding:16px 0 8px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;
+}
+.previa{display:flex;gap:12px;align-items:center;margin-top:8px}
+.previa .funda{width:88px;flex:none;border-radius:8px}
+.resultados{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:10px}
+.resultados button{border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.resultados img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.resultados span{display:block;font-size:10.5px;padding:4px 5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aviso{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.aviso.malo{color:var(--granate)}
+.estrellas{display:flex;gap:4px}
+.estrellas button{font-size:18px;color:#4a3c33;line-height:1}
+.estrellas button.on{color:var(--albero)}
+
+/* ---------- panel repertorio ---------- */
+.tarjetas-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+.num{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface)}
+.num b{display:block;font-family:var(--disp);font-weight:800;font-size:30px;line-height:1}
+.num span{font-size:12px;color:var(--muted)}
+.barras{display:flex;flex-direction:column;gap:8px}
+.barra-item{display:flex;align-items:center;gap:10px;font-size:13px}
+.barra-item .et{font-family:var(--mono);font-size:12.5px;width:74px;flex:none}
+.barra-item .track{flex:1;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.barra-item .track i{display:block;height:100%;background:var(--albero);border-radius:99px}
+.barra-item .v{color:var(--muted);font-size:12px;width:24px;text-align:right}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:var(--surface-2);border:1px solid var(--line);color:var(--ink);
+  padding:11px 16px;border-radius:999px;font-size:13.5px;z-index:99;
+  box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.toast.ver{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.oculto{display:none !important}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Cancion<span>ero</span></h1>
+    <p class="tag" id="resumen">Cargando…</p>
+  </div>
+  <div class="acciones">
+    <button class="btn ghost" id="btnNotacion" title="Cambiar entre Do-Re-Mi y C-D-E">Do Re Mi</button>
+    <button class="btn ghost" id="btnAzar" title="Saca una canción al azar para tocarla">Sorpréndeme</button>
+    <button class="btn ghost" id="btnRepertorio">Repertorio</button>
+    <button class="btn ghost" id="btnAjustes" aria-label="Ajustes y copias">⋯</button>
+    <button class="btn cta" id="btnNueva">Añadir canción</button>
+  </div>
+</header>
+
+<div class="filtros">
+  <div class="buscador">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="buscar" type="search" placeholder="Buscar por título, artista o acorde" autocomplete="off">
+  </div>
+  <div class="chips" id="chipsEstado">
+    <button class="chip e-aprendiendo" data-estado="aprendiendo" aria-pressed="false"><i class="pip"></i>Aprendiendo</button>
+    <button class="chip e-lase" data-estado="lase" aria-pressed="false"><i class="pip"></i>Me la sé</button>
+    <button class="chip e-pulida" data-estado="pulida" aria-pressed="false"><i class="pip"></i>Pulida</button>
+    <button class="chip" data-estado="fav" aria-pressed="false">★ Favoritas</button>
+  </div>
+  <select class="orden" id="orden" aria-label="Ordenar">
+    <option value="recientes">Añadidas hace poco</option>
+    <option value="olvidadas">Sin tocar hace más</option>
+    <option value="titulo">Título A-Z</option>
+    <option value="artista">Artista A-Z</option>
+    <option value="dificil">Más difíciles</option>
+    <option value="facil">Más fáciles</option>
+  </select>
+</div>
+
+<main>
+  <div class="rejilla" id="rejilla"></div>
+  <div class="vacio oculto" id="vacio">
+    <h2>Aquí va tu repertorio</h2>
+    <p id="vacioTexto">Añade la primera canción: portada, acordes y el rasgueo con el que la tocas.</p>
+    <button class="btn cta" id="btnNueva2">Añadir canción</button>
+  </div>
+</main>
+
+<!-- ficha de canción -->
+<div class="hoja" id="hojaFicha" role="dialog" aria-modal="true" aria-label="Ficha de la canción">
+  <div class="panel">
+    <div class="barra">
+      <h2 id="fichaTitulo">Canción</h2>
+      <button class="btn ghost" id="fichaTocada">Tocada hoy</button>
+      <button class="btn ghost" id="fichaEditar">Editar</button>
+      <button class="cerrar" data-cerrar aria-label="Cerrar">✕</button>
+    </div>
+    <div id="fichaCuerpo"></div>
+  </div>
+</div>
+
+<!-- editor -->
+<div class="hoja" id="hojaEditor" role="dialog" aria-modal="true" aria-label="Editor de canción">
+  <div class="panel">
+    <div class="barra">
+      <h2 id="editorTitulo">Añadir canción</h2>
+      <button class="cerrar" data-cerrar aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="fila">
+      <div class="campo"><label for="fTitulo">Título</label>
+        <input id="fTitulo" type="text" placeholder="Se me va" autocomplete="off"></div>
+      <div class="campo"><label for="fArtista">Artista</label>
+        <input id="fArtista" type="text" placeholder="Siempre Así" autocomplete="off"></div>
+    </div>
+
+    <div class="campo">
+      <label>Portada</label>
+      <div class="previa">
+        <div class="funda" id="previaFunda"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1">
+          <button class="btn" id="btnBuscarPortada">Buscar portada</button>
+          <button class="btn" id="btnSubirPortada">Subir imagen</button>
+          <button class="btn ghost" id="btnQuitarPortada">Quitar</button>
+          <input type="file" id="ficheroPortada" accept="image/*" class="oculto">
+        </div>
+      </div>
+      <div class="resultados oculto" id="resultadosPortada"></div>
+      <p class="aviso oculto" id="avisoPortada"></p>
+    </div>
+
+    <div class="fila">
+      <div class="campo"><label for="fTono">Tono</label>
+        <input id="fTono" type="text" placeholder="Mi mayor" autocomplete="off"></div>
+      <div class="campo"><label for="fCejilla">Cejilla</label>
+        <select id="fCejilla"></select></div>
+      <div class="campo"><label for="fEstado">Estado</label>
+        <select id="fEstado">
+          <option value="aprendiendo">Aprendiendo</option>
+          <option value="lase">Me la sé</option>
+          <option value="pulida">Pulida</option>
+        </select></div>
+    </div>
+
+    <div class="campo">
+      <label>Acordes de la canción</label>
+      <div class="elegidos" id="acordesElegidos"></div>
+      <div class="pestanas" id="pestQualities" role="tablist"></div>
+      <div class="calidades" id="calidades"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px">
+        <span class="vacio-min">Toca una tónica para añadir el acorde</span>
+        <button class="btn ghost" id="btnEnarmonia" style="padding:5px 10px;font-family:var(--mono)">♯ → ♭</button>
+      </div>
+      <div class="raices" id="raices"></div>
+      <div class="fila" style="margin-top:10px;align-items:flex-end">
+        <div class="campo" style="margin:0"><label for="fBajo">Bajo distinto (acorde con barra)</label>
+          <select id="fBajo"></select></div>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label>Rasgueo</label>
+      <div class="fila" style="align-items:flex-end;margin-bottom:8px">
+        <div class="campo" style="margin:0;flex:2 1 200px"><label for="fPreset">Patrón</label>
+          <select id="fPreset"></select></div>
+        <div class="campo" style="margin:0;flex:0 1 110px"><label for="fBpm">Tempo</label>
+          <input id="fBpm" type="number" min="30" max="240" value="90"></div>
+      </div>
+      <div class="compas" id="editorCompas"></div>
+      <div class="compas-pie">
+        <button class="btn" id="btnTocarPatron">▶ Escuchar</button>
+        <span>Toca cada casilla para cambiarla</span>
+      </div>
+      <div class="leyenda">
+        <span><b>↓</b> abajo</span><span><b>↑</b> arriba</span>
+        <span><b>×</b> apagado</span><span><b>●</b> golpe</span><span><b>·</b> silencio</span>
+      </div>
+    </div>
+
+    <div class="fila">
+      <div class="campo"><label>Dificultad</label>
+        <div class="estrellas" id="fDificultad"></div></div>
+      <div class="campo"><label for="fEnlace">Enlace (vídeo, tablatura…)</label>
+        <input id="fEnlace" type="url" placeholder="https://" autocomplete="off"></div>
+    </div>
+
+    <div class="campo"><label for="fNotas">Notas</label>
+      <textarea id="fNotas" placeholder="Estructura, remates, dónde entra el capo, lo que se te atraganta…"></textarea></div>
+
+    <div class="pie-form">
+      <button class="btn peligro oculto" id="btnBorrar">Borrar canción</button>
+      <button class="btn ghost" data-cerrar>Cancelar</button>
+      <button class="btn cta" id="btnGuardar">Guardar canción</button>
+    </div>
+  </div>
+</div>
+
+<!-- repertorio -->
+<div class="hoja" id="hojaRepertorio" role="dialog" aria-modal="true" aria-label="Repertorio">
+  <div class="panel">
+    <div class="barra"><h2>Tu repertorio</h2>
+      <button class="cerrar" data-cerrar aria-label="Cerrar">✕</button></div>
+    <div id="repertorioCuerpo"></div>
+  </div>
+</div>
+
+<!-- ajustes -->
+<div class="hoja" id="hojaAjustes" role="dialog" aria-modal="true" aria-label="Ajustes">
+  <div class="panel">
+    <div class="barra"><h2>Ajustes y copias</h2>
+      <button class="cerrar" data-cerrar aria-label="Cerrar">✕</button></div>
+    <div class="bloque">
+      <h4>Notación</h4>
+      <div class="chips">
+        <button class="chip" data-notacion="latina" aria-pressed="false">Do Re Mi</button>
+        <button class="chip" data-notacion="inglesa" aria-pressed="false">C D E</button>
+      </div>
+    </div>
+    <div class="bloque">
+      <h4>Copia de seguridad</h4>
+      <p class="aviso">Las canciones se guardan en este dispositivo. Exporta de vez en cuando para no perderlas.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn" id="btnExportar">Exportar cancionero</button>
+        <button class="btn" id="btnImportar">Importar</button>
+        <input type="file" id="ficheroImportar" accept="application/json" class="oculto">
+      </div>
+    </div>
+    <div class="bloque">
+      <h4>Espacio</h4>
+      <p class="aviso" id="infoEspacio"></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Cancionero — repertorio de guitarra
+   ============================================================ */
+const $ = (s,c=document)=>c.querySelector(s);
+const $$ = (s,c=document)=>[...c.querySelectorAll(s)];
+const esc = s => String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* ---------- almacén (funciona en la vista previa y en el móvil) ---------- */
+const CLAVE = 'cancionero:v1';
+const Almacen = {
+  async leer(){
+    try{
+      if(window.storage){ const r = await window.storage.get(CLAVE, false); return r ? r.value : null; }
+      return localStorage.getItem(CLAVE);
+    }catch(e){ return null; }
+  },
+  async escribir(txt){
+    if(window.storage){ await window.storage.set(CLAVE, txt, false); return; }
+    localStorage.setItem(CLAVE, txt);
+  }
+};
+
+/* ---------- acordes ---------- */
+const RAICES = [
+  {sos:'C', bem:'C'},  {sos:'C#', bem:'Db', neg:1}, {sos:'D', bem:'D'},
+  {sos:'D#',bem:'Eb',neg:1}, {sos:'E', bem:'E'},  {sos:'F', bem:'F'},
+  {sos:'F#',bem:'Gb',neg:1}, {sos:'G', bem:'G'},  {sos:'G#',bem:'Ab',neg:1},
+  {sos:'A', bem:'A'},  {sos:'A#',bem:'Bb',neg:1}, {sos:'B', bem:'B'}
+];
+const LATIN = {C:'Do','C#':'Do♯',Db:'Re♭',D:'Re','D#':'Re♯',Eb:'Mi♭',E:'Mi',F:'Fa','F#':'Fa♯',
+  Gb:'Sol♭',G:'Sol','G#':'Sol♯',Ab:'La♭',A:'La','A#':'La♯',Bb:'Si♭',B:'Si'};
+
+const CALIDADES = {
+  'Básicos':[
+    ['','mayor'],['m','menor'],['7','séptima'],['m7','menor 7'],['maj7','mayor 7'],
+    ['6','sexta'],['sus2','sus2'],['sus4','sus4'],['5','quinta']
+  ],
+  'Color':[
+    ['add9','add9'],['9','novena'],['m9','menor 9'],['maj9','mayor 9'],['11','oncena'],
+    ['13','trecena'],['7sus4','7sus4'],['m6','menor 6'],['6/9','sexta con novena']
+  ],
+  'Tensión':[
+    ['dim','disminuido'],['dim7','disminuido 7'],['m7b5','semidisminuido'],['aug','aumentado'],
+    ['7b5','7 con quinta bemol'],['7b9','7 con novena bemol'],['7#9','7 con novena sostenida'],
+    ['9sus4','9sus4'],['mMaj7','menor con 7 mayor']
+  ]
+};
+const SIMBOLO = {'dim':'°','dim7':'°7','aug':'+','m7b5':'m7♭5','7b5':'7♭5','7b9':'7♭9','7#9':'7♯9','mMaj7':'m(maj7)'};
+
+const nombreRaiz = r => estado.notacion==='latina' ? (LATIN[r]||r) : r;
+const textoAcorde = a => nombreRaiz(a.r) + (SIMBOLO[a.q] ?? a.q) + (a.b ? '/'+nombreRaiz(a.b) : '');
+const idAcorde = a => a.r+'|'+a.q+'|'+(a.b||'');
+
+/* ---------- rasgueos ---------- */
+const PATRONES = [
+  {id:'negras',   n:'Negras al aire',           u:1,  c:['D','D','D','D']},
+  {id:'balada',   n:'Balada 4/4  ↓ ↓↑ ↑↓↑',     u:.5, c:['D','-','D','U','-','U','D','U']},
+  {id:'pop',      n:'Pop continuo  ↓↑↓↑',       u:.5, c:['D','U','D','U','D','U','D','U']},
+  {id:'rumba',    n:'Rumba',                     u:.5, c:['D','-','D','U','X','U','D','U']},
+  {id:'rumbagol', n:'Rumba con golpe',           u:.5, c:['D','U','G','U','D','U','G','U']},
+  {id:'bolero',   n:'Bolero  ↓ ↑↑ ↓ ↑↑',        u:.5, c:['D','-','U','U','D','-','U','U']},
+  {id:'reggae',   n:'Contratiempo (reggae)',     u:.5, c:['-','U','-','U','-','U','-','U']},
+  {id:'country',  n:'Bajo–rasgueo',              u:.5, c:['D','-','D','U','D','-','D','U']},
+  {id:'vals',     n:'Vals 3/4',                  u:.5, c:['D','-','U','-','U','-']},
+  {id:'sevi',     n:'Sevillanas 3/4',            u:.5, c:['D','U','D','U','D','U']},
+  {id:'buleria',  n:'Bulería · acentos 12·3·6·8·10', u:1, c:['G','X','X','G','X','X','G','X','G','X','G','X']},
+  {id:'libre',    n:'A mi aire (vacío)',         u:.5, c:['-','-','-','-','-','-','-','-']}
+];
+const VALORES = ['-','D','U','X','G'];
+const GLIFO = {'-':'·','D':'↓','U':'↑','X':'×','G':'●'};
+
+const ESTADOS = {
+  aprendiendo:{n:'Aprendiendo', c:'var(--albero)'},
+  lase:{n:'Me la sé', c:'var(--azulejo)'},
+  pulida:{n:'Pulida', c:'var(--verde)'}
+};
+
+/* ---------- portadas generadas ---------- */
+const PALETAS=[['#1F4E6B','#E9B23C'],['#7A2E3B','#EBDCC4'],['#2C5F4A','#E9C46A'],
+  ['#3B2F6B','#D6C7EE'],['#8A4B1F','#F1DCA8'],['#14343A','#68C0A8'],
+  ['#5A2C4A','#F0B7C6'],['#4A4718','#E2DDA4']];
+function hash(s){let h=2166136261;s=String(s||'x');for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return Math.abs(h)}
+function portadaGenerada(semilla){
+  const h=hash(semilla), [a,b]=PALETAS[h%PALETAS.length], motivo=(h>>3)%4, rot=((h>>7)%6)*15;
+  let p='', n=4, s=100/n;
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const cx=(s*x+s/2).toFixed(2), cy=(s*y+s/2).toFixed(2), r=+(s*0.4).toFixed(2);
+    if(motivo===0){
+      p+=`<g transform="translate(${cx} ${cy}) rotate(${rot})"><rect x="${-r}" y="${-r}" width="${2*r}" height="${2*r}" fill="${b}" opacity=".55"/><rect x="${-r}" y="${-r}" width="${2*r}" height="${2*r}" fill="${b}" opacity=".55" transform="rotate(45)"/></g>`;
+    }else if(motivo===1){
+      p+=`<path d="M${cx} ${cy-r} L${+cx+r} ${cy} L${cx} ${+cy+r} L${cx-r} ${cy} Z" fill="${b}" opacity="${(x+y)%2?'.8':'.4'}"/>`;
+    }else if(motivo===2){
+      p+=`<path d="M${cx-r} ${+cy+r} A${r} ${r} 0 0 1 ${+cx+r} ${+cy+r}" fill="none" stroke="${b}" stroke-width="${(r*0.4).toFixed(2)}" opacity=".8"/>`;
+    }else{
+      if((x+y)%2===0) p+=`<rect x="${s*x}" y="${s*y}" width="${s}" height="${s}" fill="${b}" opacity=".13"/>`;
+      p+=`<circle cx="${cx}" cy="${cy}" r="${(r*0.42).toFixed(2)}" fill="${b}" opacity=".85"/>`;
+    }
+  }
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="v" cx=".5" cy=".3" r=".85"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></radialGradient></defs><rect width="100" height="100" fill="${a}"/>${p}<rect width="100" height="100" fill="url(#v)"/></svg>`;
+  return 'data:image/svg+xml,'+encodeURIComponent(svg);
+}
+const portadaDe = c => c.portada || portadaGenerada((c.titulo||'')+'·'+(c.artista||''));
+
+/* ---------- estado ---------- */
+let estado = {notacion:'latina', canciones:[]};
+let filtro = {texto:'', estados:new Set(), orden:'recientes'};
+let guardarPend = null;
+
+function guardar(){
+  clearTimeout(guardarPend);
+  guardarPend = setTimeout(async ()=>{
+    try{ await Almacen.escribir(JSON.stringify(estado)); }
+    catch(e){ aviso('No se ha podido guardar: no queda espacio. Exporta y quita alguna portada pesada.'); }
+  }, 120);
+}
+function aviso(txt){
+  const t=$('#toast'); t.textContent=txt; t.classList.add('ver');
+  clearTimeout(aviso._t); aviso._t=setTimeout(()=>t.classList.remove('ver'), 2600);
+}
+
+/* ---------- rejilla ---------- */
+function cancionesVisibles(){
+  let l = estado.canciones.slice();
+  const q = filtro.texto.trim().toLowerCase();
+  if(q) l = l.filter(c=>{
+    const acs = (c.acordes||[]).map(a=>textoAcorde(a)+' '+a.r+a.q).join(' ');
+    return ((c.titulo||'')+' '+(c.artista||'')+' '+(c.tono||'')+' '+acs).toLowerCase().includes(q);
+  });
+  if(filtro.estados.size){
+    l = l.filter(c=>{
+      for(const f of filtro.estados){
+        if(f==='fav' && c.fav) return true;
+        if(f===c.estado) return true;
+      }
+      return false;
+    });
+  }
+  const cmp = {
+    recientes:(a,b)=>(b.creado||0)-(a.creado||0),
+    olvidadas:(a,b)=>(a.ultimaVez||0)-(b.ultimaVez||0),
+    titulo:(a,b)=>(a.titulo||'').localeCompare(b.titulo||'','es'),
+    artista:(a,b)=>(a.artista||'').localeCompare(b.artista||'','es'),
+    dificil:(a,b)=>(b.dificultad||0)-(a.dificultad||0),
+    facil:(a,b)=>(a.dificultad||0)-(b.dificultad||0)
+  }[filtro.orden];
+  return l.sort(cmp);
+}
+
+function pintarRejilla(){
+  const lista = cancionesVisibles(), cont = $('#rejilla');
+  cont.innerHTML = lista.map(c=>{
+    const acs = (c.acordes||[]);
+    const chips = acs.slice(0,4).map(a=>`<span class="ac">${esc(textoAcorde(a))}</span>`).join('')
+      + (acs.length>4 ? `<span class="ac mas">+${acs.length-4}</span>` : '');
+    const pat = c.patron && c.patron.c ? c.patron.c.map(v=>`<span>${GLIFO[v]}</span>`).join('') : '';
+    return `<button class="card" data-id="${c.id}">
+      <div class="funda">
+        <i class="estado" style="background:${ESTADOS[c.estado]?.c||'var(--muted)'}"></i>
+        ${c.fav?'<span class="fav">★</span>':''}
+        <img src="${esc(portadaDe(c))}" alt="" loading="lazy">
+        ${pat?`<div class="compasito">${pat}</div>`:''}
+      </div>
+      <h3>${esc(c.titulo||'Sin título')}</h3>
+      <p class="art">${esc(c.artista||'—')}</p>
+      <div class="acs">${chips||'<span class="ac mas">sin acordes</span>'}</div>
+    </button>`;
+  }).join('');
+  $$('#rejilla .card').forEach(b=>b.onclick=()=>abrirFicha(b.dataset.id));
+
+  const hay = estado.canciones.length>0;
+  $('#vacio').classList.toggle('oculto', lista.length>0);
+  if(hay && !lista.length){
+    $('#vacio').querySelector('h2').textContent = 'Nada por aquí';
+    $('#vacioTexto').textContent = 'Ninguna canción encaja con la búsqueda o los filtros.';
+    $('#btnNueva2').classList.add('oculto');
+  }else if(!hay){
+    $('#vacio').querySelector('h2').textContent = 'Aquí va tu repertorio';
+    $('#vacioTexto').textContent = 'Añade la primera canción: portada, acordes y el rasgueo con el que la tocas.';
+    $('#btnNueva2').classList.remove('oculto');
+  }
+  pintarResumen();
+}
+
+function pintarResumen(){
+  const n = estado.canciones.length;
+  const acs = new Set(); estado.canciones.forEach(c=>(c.acordes||[]).forEach(a=>acs.add(idAcorde(a))));
+  $('#resumen').textContent = n
+    ? `${n} ${n===1?'canción':'canciones'} · ${acs.size} ${acs.size===1?'acorde distinto':'acordes distintos'}`
+    : 'Todavía no hay canciones';
+}
+
+/* ---------- ficha ---------- */
+let fichaActual = null;
+function abrirFicha(id){
+  const c = estado.canciones.find(x=>x.id===id); if(!c) return;
+  fichaActual = c;
+  $('#fichaTitulo').textContent = c.titulo || 'Sin título';
+  const acs = (c.acordes||[]).map(a=>`<span class="ac">${esc(textoAcorde(a))}</span>`).join('');
+  const dias = c.ultimaVez ? Math.floor((Date.now()-c.ultimaVez)/86400000) : null;
+  const cuandoTexto = dias===null ? 'nunca la has marcado' : dias===0 ? 'hoy' : dias===1 ? 'ayer' : `hace ${dias} días`;
+  $('#fichaCuerpo').innerHTML = `
+    <div class="ficha-cab">
+      <div class="funda"><img src="${esc(portadaDe(c))}" alt=""></div>
+      <div class="meta">
+        <h3>${esc(c.titulo||'Sin título')}</h3>
+        <p class="art">${esc(c.artista||'—')}</p>
+        <div class="datos">
+          <span class="dato" style="color:${ESTADOS[c.estado]?.c}">${ESTADOS[c.estado]?.n||''}</span>
+          ${c.tono?`<span class="dato">Tono <b>${esc(c.tono)}</b></span>`:''}
+          ${c.cejilla?`<span class="dato">Cejilla <b>${c.cejilla}</b></span>`:''}
+          ${c.patron?.bpm?`<span class="dato">Tempo <b>${c.patron.bpm}</b></span>`:''}
+          ${c.dificultad?`<span class="dato">Dificultad <b>${'●'.repeat(c.dificultad)}${'○'.repeat(5-c.dificultad)}</b></span>`:''}
+        </div>
+        <p class="aviso">Tocada por última vez: ${cuandoTexto}.</p>
+        ${c.enlace?`<p class="aviso"><a href="${esc(c.enlace)}" target="_blank" rel="noopener" style="color:var(--azulejo)">Abrir enlace ↗</a></p>`:''}
+      </div>
+    </div>
+    ${acs?`<div class="bloque"><h4>Acordes</h4><div class="acs-grandes">${acs}</div></div>`:''}
+    ${c.patron?`<div class="bloque"><h4>Rasgueo · ${esc(c.patron.n||'personalizado')}</h4>
+      <div class="compas" id="fichaCompas"></div>
+      <div class="compas-pie"><button class="btn" id="fichaTocar">▶ Escuchar</button>
+      <span>${c.patron.bpm||90} pulsaciones por minuto</span></div></div>`:''}
+    ${c.notas?`<div class="bloque"><h4>Notas</h4><p class="notas">${esc(c.notas)}</p></div>`:''}
+  `;
+  if(c.patron){
+    pintarCompas($('#fichaCompas'), c.patron, false);
+    $('#fichaTocar').onclick = e => reproducir(e.currentTarget, c.patron, $('#fichaCompas'));
+  }
+  abrirHoja('#hojaFicha');
+}
+
+$('#fichaTocada').onclick = ()=>{
+  if(!fichaActual) return;
+  fichaActual.ultimaVez = Date.now(); guardar(); aviso('Anotado: tocada hoy.');
+  abrirFicha(fichaActual.id); pintarRejilla();
+};
+$('#fichaEditar').onclick = ()=>{ if(fichaActual){ cerrarHoja('#hojaFicha'); abrirEditor(fichaActual); } };
+
+/* ---------- compás (dibujo) ---------- */
+function pintarCompas(cont, patron, editable){
+  if(!cont) return;
+  const porTiempo = Math.max(1, Math.round(1/patron.u));
+  cont.innerHTML = patron.c.map((v,i)=>{
+    const tiempo = i % porTiempo === 0;
+    return `<button class="cel ${v==='-'?'vacia':''} ${tiempo?'tiempo':''}" data-v="${v}" data-i="${i}" ${editable?'':'tabindex="-1"'}>
+      ${tiempo?`<i class="n">${Math.floor(i/porTiempo)+1}</i>`:''}${GLIFO[v]}</button>`;
+  }).join('');
+  if(editable){
+    $$('.cel',cont).forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.i, act=VALORES.indexOf(patron.c[i]);
+      patron.c[i]=VALORES[(act+1)%VALORES.length];
+      patron.n='Personalizado'; $('#fPreset').value='personalizado';
+      pintarCompas(cont, patron, true);
+    });
+  }
+}
+
+/* ---------- hojas ---------- */
+function abrirHoja(sel){ $(sel).classList.add('abierta'); document.body.style.overflow='hidden'; }
+function cerrarHoja(sel){ $(sel).classList.remove('abierta'); document.body.style.overflow=''; pararAudio(); }
+$$('.hoja').forEach(h=>{
+  h.addEventListener('click', e=>{ if(e.target===h) cerrarHoja('#'+h.id); });
+  $$('[data-cerrar]',h).forEach(b=>b.onclick=()=>cerrarHoja('#'+h.id));
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ const ab=$('.hoja.abierta'); if(ab) cerrarHoja('#'+ab.id); }
+});
+</script>
+<script>
+/* ============================================================
+   Sonido del rasgueo
+   ============================================================ */
+let AC=null, ruidoBuf=null, tocando=null;
+function ctxAudio(){
+  if(!AC){
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    const n = Math.floor(AC.sampleRate*0.6), b = AC.createBuffer(1,n,AC.sampleRate), d = b.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+    ruidoBuf = b;
+  }
+  if(AC.state==='suspended') AC.resume();
+  return AC;
+}
+function golpe(v,t){
+  if(v==='-'||!AC) return;
+  if(v==='G'){
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(55,t+.12);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.7,t+.005);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.16);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t+.2);
+  }
+  const s=AC.createBufferSource(); s.buffer=ruidoBuf;
+  const f=AC.createBiquadFilter(), g=AC.createGain();
+  let dur=.14, vol=.42;
+  if(v==='D'){ f.type='lowpass';  f.frequency.value=2600; dur=.18; vol=.5; }
+  if(v==='U'){ f.type='highpass'; f.frequency.value=1700; dur=.10; vol=.3; }
+  if(v==='X'){ f.type='bandpass'; f.frequency.value=1100; f.Q.value=1.4; dur=.05; vol=.45; }
+  if(v==='G'){ f.type='lowpass';  f.frequency.value=700;  dur=.05; vol=.3; }
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.004);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  s.connect(f).connect(g).connect(AC.destination); s.start(t); s.stop(t+dur+.03);
+}
+function marcar(cont,i){ if(cont) $$('.cel',cont).forEach((c,j)=>c.classList.toggle('suena', j===i)); }
+function reproducir(btn, patron, cont){
+  if(tocando){ pararAudio(); return; }
+  const ac=ctxAudio();
+  const paso = 60/(patron.bpm||90)*patron.u;
+  const t0 = ac.currentTime+.1, vueltas=2, total=patron.c.length*vueltas, temps=[];
+  for(let k=0;k<total;k++){
+    const i=k%patron.c.length, t=t0+k*paso;
+    golpe(patron.c[i], t);
+    temps.push(setTimeout(()=>marcar(cont,i), Math.max(0,(t-ac.currentTime)*1000)));
+  }
+  btn.textContent='■ Parar';
+  temps.push(setTimeout(pararAudio, (t0+total*paso-ac.currentTime)*1000+150));
+  tocando={temps, btn, cont};
+}
+function pararAudio(){
+  if(!tocando) return;
+  tocando.temps.forEach(clearTimeout);
+  marcar(tocando.cont,-1);
+  if(tocando.btn) tocando.btn.textContent='▶ Escuchar';
+  tocando=null;
+  if(AC){ try{ AC.close(); }catch(e){} AC=null; ruidoBuf=null; }
+}
+
+/* ============================================================
+   Editor
+   ============================================================ */
+let borrador=null, editandoId=null, enarmonia='sos', calidadSel='', grupoSel='Básicos';
+
+function nuevaCancion(){
+  const p = PATRONES.find(x=>x.id==='balada');
+  return {id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    titulo:'', artista:'', portada:null, tono:'', cejilla:0, estado:'aprendiendo',
+    acordes:[], patron:{id:p.id, n:p.n, u:p.u, c:p.c.slice(), bpm:90},
+    dificultad:2, fav:false, notas:'', enlace:'', creado:Date.now(), ultimaVez:0};
+}
+
+function abrirEditor(c){
+  editandoId = c ? c.id : null;
+  borrador = c ? JSON.parse(JSON.stringify(c)) : nuevaCancion();
+  $('#editorTitulo').textContent = c ? 'Editar canción' : 'Añadir canción';
+  $('#btnBorrar').classList.toggle('oculto', !c);
+  $('#fTitulo').value=borrador.titulo; $('#fArtista').value=borrador.artista;
+  $('#fTono').value=borrador.tono||''; $('#fEstado').value=borrador.estado;
+  $('#fEnlace').value=borrador.enlace||''; $('#fNotas').value=borrador.notas||'';
+  $('#fBpm').value=borrador.patron.bpm||90;
+  $('#fCejilla').innerHTML = Array.from({length:13},(_,i)=>
+    `<option value="${i}" ${borrador.cejilla===i?'selected':''}>${i===0?'Sin cejilla':'Traste '+i}</option>`).join('');
+  $('#resultadosPortada').classList.add('oculto');
+  $('#avisoPortada').classList.add('oculto');
+  pintarPreset(); pintarPrevia(); pintarElegidos(); pintarPestanas(); pintarCalidades();
+  pintarRaices(); pintarBajo(); pintarEstrellas();
+  pintarCompas($('#editorCompas'), borrador.patron, true);
+  abrirHoja('#hojaEditor');
+  if(!c) setTimeout(()=>$('#fTitulo').focus(), 250);
+}
+
+function pintarPrevia(){
+  $('#previaFunda').innerHTML = `<img src="${esc(portadaDe({...borrador, titulo:$('#fTitulo').value, artista:$('#fArtista').value}))}" alt="">`;
+}
+function pintarElegidos(){
+  const c=$('#acordesElegidos');
+  c.innerHTML = borrador.acordes.length
+    ? borrador.acordes.map((a,i)=>`<span class="ac">${esc(textoAcorde(a))}<button data-i="${i}" aria-label="Quitar">✕</button></span>`).join('')
+    : '<span class="vacio-min">Sin acordes todavía</span>';
+  $$('button',c).forEach(b=>b.onclick=()=>{ borrador.acordes.splice(+b.dataset.i,1); pintarElegidos(); });
+}
+function pintarPestanas(){
+  const c=$('#pestQualities');
+  c.innerHTML = Object.keys(CALIDADES).map(g=>
+    `<button class="pest" role="tab" data-g="${g}" aria-selected="${g===grupoSel}">${g}</button>`).join('');
+  $$('.pest',c).forEach(b=>b.onclick=()=>{ grupoSel=b.dataset.g; pintarPestanas(); pintarCalidades(); });
+}
+function pintarCalidades(){
+  const c=$('#calidades');
+  c.innerHTML = CALIDADES[grupoSel].map(([q,n])=>
+    `<button class="cal" data-q="${q}" title="${esc(n)}" aria-pressed="${q===calidadSel}">${esc(SIMBOLO[q] ?? (q||'mayor'))}</button>`).join('');
+  $$('.cal',c).forEach(b=>b.onclick=()=>{ calidadSel=b.dataset.q; pintarCalidades(); });
+}
+function pintarRaices(){
+  const c=$('#raices');
+  c.innerHTML = RAICES.map(r=>{
+    const nom = enarmonia==='bem' ? r.bem : r.sos;
+    return `<button class="raiz ${r.neg?'neg':''}" data-r="${nom}">${esc(nombreRaiz(nom))}</button>`;
+  }).join('');
+  $$('.raiz',c).forEach(b=>b.onclick=()=>{
+    const bajo = $('#fBajo').value || null;
+    const a = {r:b.dataset.r, q:calidadSel, b:bajo};
+    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está.'); return; }
+    borrador.acordes.push(a); pintarElegidos();
+  });
+  $('#btnEnarmonia').textContent = enarmonia==='sos' ? '♯ → ♭' : '♭ → ♯';
+}
+function pintarBajo(){
+  const sel=$('#fBajo'), v=sel.value;
+  sel.innerHTML = '<option value="">Ninguno</option>' + RAICES.map(r=>{
+    const nom = enarmonia==='bem' ? r.bem : r.sos;
+    return `<option value="${nom}">/${esc(nombreRaiz(nom))}</option>`;
+  }).join('');
+  if(v) sel.value=v;
+}
+function pintarEstrellas(){
+  const c=$('#fDificultad');
+  c.innerHTML = [1,2,3,4,5].map(i=>`<button data-i="${i}" class="${i<=borrador.dificultad?'on':''}" aria-label="Dificultad ${i}">●</button>`).join('');
+  $$('button',c).forEach(b=>b.onclick=()=>{ borrador.dificultad=+b.dataset.i; pintarEstrellas(); });
+}
+function pintarPreset(){
+  const s=$('#fPreset');
+  s.innerHTML = PATRONES.map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join('')
+    + '<option value="personalizado">Personalizado</option>';
+  s.value = PATRONES.some(p=>p.id===borrador.patron.id) ? borrador.patron.id : 'personalizado';
+}
+$('#fPreset').onchange = e=>{
+  const p = PATRONES.find(x=>x.id===e.target.value);
+  if(!p) return;
+  borrador.patron = {id:p.id, n:p.n, u:p.u, c:p.c.slice(), bpm:+$('#fBpm').value||90};
+  pintarCompas($('#editorCompas'), borrador.patron, true);
+};
+$('#fBpm').oninput = e=>{ borrador.patron.bpm = +e.target.value||90; };
+$('#btnEnarmonia').onclick = ()=>{ enarmonia = enarmonia==='sos'?'bem':'sos'; pintarRaices(); pintarBajo(); };
+$('#btnTocarPatron').onclick = e=>reproducir(e.currentTarget, borrador.patron, $('#editorCompas'));
+$('#fTitulo').oninput = pintarPrevia;
+$('#fArtista').oninput = pintarPrevia;
+
+/* --- portadas --- */
+$('#btnQuitarPortada').onclick = ()=>{ borrador.portada=null; pintarPrevia(); $('#resultadosPortada').classList.add('oculto'); };
+$('#btnSubirPortada').onclick = ()=>$('#ficheroPortada').click();
+$('#ficheroPortada').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const img=new Image(), lector=new FileReader();
+  lector.onload = ()=>{ img.onload=()=>{
+    const L=420, cv=document.createElement('canvas'); cv.width=cv.height=L;
+    const g=cv.getContext('2d'), lado=Math.min(img.width,img.height);
+    g.drawImage(img,(img.width-lado)/2,(img.height-lado)/2,lado,lado,0,0,L,L);
+    borrador.portada = cv.toDataURL('image/jpeg',0.78);
+    pintarPrevia(); aviso('Portada lista.');
+  }; img.src=lector.result; };
+  lector.readAsDataURL(f); e.target.value='';
+};
+$('#btnBuscarPortada').onclick = async ()=>{
+  const t=$('#fTitulo').value.trim(), a=$('#fArtista').value.trim();
+  const av=$('#avisoPortada'), res=$('#resultadosPortada');
+  if(!t){ aviso('Escribe primero el título.'); return; }
+  av.className='aviso'; av.textContent='Buscando…'; av.classList.remove('oculto');
+  try{
+    const url=`https://itunes.apple.com/search?term=${encodeURIComponent(a+' '+t)}&entity=song&limit=9`;
+    const r=await fetch(url); const j=await r.json();
+    if(!j.results || !j.results.length){ av.textContent='Sin resultados. Prueba con otro título o sube una imagen.'; res.classList.add('oculto'); return; }
+    res.innerHTML = j.results.map(x=>{
+      const img=(x.artworkUrl100||'').replace('100x100','600x600');
+      return `<button data-img="${esc(img)}" data-t="${esc(x.trackName)}" data-a="${esc(x.artistName)}">
+        <img src="${esc(x.artworkUrl100)}" alt=""><span>${esc(x.artistName)}</span></button>`;
+    }).join('');
+    $$('button',res).forEach(b=>b.onclick=()=>{
+      borrador.portada = b.dataset.img;
+      if(!$('#fArtista').value.trim()) $('#fArtista').value = b.dataset.a;
+      pintarPrevia(); res.classList.add('oculto'); av.classList.add('oculto');
+    });
+    res.classList.remove('oculto'); av.classList.add('oculto');
+  }catch(err){
+    av.className='aviso malo';
+    av.textContent='No se ha podido buscar (sin conexión o bloqueado). Sube una imagen desde el móvil.';
+    res.classList.add('oculto');
+  }
+};
+
+/* --- guardar / borrar --- */
+$('#btnGuardar').onclick = ()=>{
+  const t=$('#fTitulo').value.trim();
+  if(!t){ aviso('Ponle un título a la canción.'); $('#fTitulo').focus(); return; }
+  Object.assign(borrador,{
+    titulo:t, artista:$('#fArtista').value.trim(), tono:$('#fTono').value.trim(),
+    cejilla:+$('#fCejilla').value||0, estado:$('#fEstado').value,
+    enlace:$('#fEnlace').value.trim(), notas:$('#fNotas').value
+  });
+  borrador.patron.bpm = +$('#fBpm').value||90;
+  if(editandoId){
+    const i=estado.canciones.findIndex(c=>c.id===editandoId);
+    if(i>=0) estado.canciones[i]=borrador;
+  }else{
+    estado.canciones.push(borrador);
+  }
+  guardar(); pintarRejilla(); cerrarHoja('#hojaEditor');
+  aviso(editandoId ? 'Canción actualizada.' : 'Canción añadida al cancionero.');
+};
+$('#btnBorrar').onclick = ()=>{
+  if(!editandoId) return;
+  if(!confirm('¿Borrar esta canción del cancionero?')) return;
+  estado.canciones = estado.canciones.filter(c=>c.id!==editandoId);
+  guardar(); pintarRejilla(); cerrarHoja('#hojaEditor'); aviso('Canción borrada.');
+};
+
+/* ============================================================
+   Repertorio
+   ============================================================ */
+function abrirRepertorio(){
+  const l=estado.canciones, n=l.length;
+  const porEstado = k=>l.filter(c=>c.estado===k).length;
+  const cuenta = {};
+  l.forEach(c=>(c.acordes||[]).forEach(a=>{ const k=idAcorde(a); cuenta[k]=(cuenta[k]||0)+1; }));
+  const top = Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max = top.length?top[0][1]:1;
+  const rasg = {};
+  l.forEach(c=>{ const k=c.patron?.n||'—'; rasg[k]=(rasg[k]||0)+1; });
+  const topR = Object.entries(rasg).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const oxidadas = l.filter(c=>c.estado!=='aprendiendo')
+    .sort((a,b)=>(a.ultimaVez||0)-(b.ultimaVez||0)).slice(0,5);
+
+  $('#repertorioCuerpo').innerHTML = `
+    <div class="tarjetas-num">
+      <div class="num"><b>${n}</b><span>canciones</span></div>
+      <div class="num"><b style="color:var(--albero)">${porEstado('aprendiendo')}</b><span>aprendiendo</span></div>
+      <div class="num"><b style="color:var(--azulejo)">${porEstado('lase')}</b><span>me las sé</span></div>
+      <div class="num"><b style="color:var(--verde)">${porEstado('pulida')}</b><span>pulidas</span></div>
+      <div class="num"><b>${Object.keys(cuenta).length}</b><span>acordes distintos</span></div>
+    </div>
+    ${top.length?`<div class="bloque"><h4>Acordes que más usas</h4><div class="barras">
+      ${top.map(([k,v])=>{const [r,q,b]=k.split('|');const a={r,q,b:b||null};
+        return `<div class="barra-item"><span class="et">${esc(textoAcorde(a))}</span>
+        <span class="track"><i style="width:${Math.round(v/max*100)}%"></i></span>
+        <span class="v">${v}</span></div>`;}).join('')}
+    </div></div>`:''}
+    ${topR.length?`<div class="bloque"><h4>Rasgueos más repetidos</h4><div class="barras">
+      ${topR.map(([k,v])=>`<div class="barra-item"><span class="et" style="width:auto;flex:1;font-family:var(--body)">${esc(k)}</span><span class="v">${v}</span></div>`).join('')}
+    </div></div>`:''}
+    ${oxidadas.length?`<div class="bloque"><h4>Llevas más tiempo sin tocarlas</h4><div class="barras">
+      ${oxidadas.map(c=>{
+        const d=c.ultimaVez?Math.floor((Date.now()-c.ultimaVez)/86400000):null;
+        return `<div class="barra-item"><span class="et" style="width:auto;flex:1;font-family:var(--body)">${esc(c.titulo)}</span>
+        <span class="v" style="width:auto;color:var(--muted)">${d===null?'nunca':d+' d'}</span></div>`;}).join('')}
+    </div></div>`:''}
+    ${!n?'<p class="aviso">Añade canciones y aquí verás cómo se mueve tu repertorio.</p>':''}
+  `;
+  abrirHoja('#hojaRepertorio');
+}
+
+/* ============================================================
+   Ajustes, copias, arranque
+   ============================================================ */
+function pintarAjustes(){
+  $$('#hojaAjustes [data-notacion]').forEach(b=>
+    b.setAttribute('aria-pressed', b.dataset.notacion===estado.notacion));
+  const kb = Math.round(JSON.stringify(estado).length/1024);
+  $('#infoEspacio').textContent = `El cancionero ocupa unos ${kb} KB. Las portadas subidas desde el móvil pesan; las buscadas por internet, casi nada.`;
+}
+$$('#hojaAjustes [data-notacion]').forEach(b=>b.onclick=()=>{
+  estado.notacion=b.dataset.notacion; guardar(); refrescarNotacion(); pintarAjustes();
+});
+$('#btnExportar').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(estado,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cancionero-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$('#btnImportar').onclick = ()=>$('#ficheroImportar').click();
+$('#ficheroImportar').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const lector=new FileReader();
+  lector.onload = ()=>{
+    try{
+      const d = JSON.parse(lector.result);
+      if(!d || !Array.isArray(d.canciones)) throw 0;
+      const reemplazar = estado.canciones.length===0 ||
+        confirm(`El archivo trae ${d.canciones.length} canciones. Aceptar reemplaza tu cancionero; cancelar las añade a lo que ya tienes.`);
+      if(reemplazar) estado.canciones = d.canciones;
+      else{
+        const vistos = new Set(estado.canciones.map(c=>c.id));
+        d.canciones.forEach(c=>{ if(vistos.has(c.id)) c.id = c.id+'-'+Math.random().toString(36).slice(2,5); estado.canciones.push(c); });
+      }
+      if(d.notacion) estado.notacion = d.notacion;
+      guardar(); refrescarNotacion(); pintarAjustes();
+      aviso('Cancionero importado.');
+    }catch(err){ aviso('Ese archivo no es un cancionero válido.'); }
+  };
+  lector.readAsText(f); e.target.value='';
+};
+
+function refrescarNotacion(){
+  $('#btnNotacion').textContent = estado.notacion==='latina' ? 'Do Re Mi' : 'C D E';
+  pintarRejilla();
+  if($('#hojaEditor').classList.contains('abierta')){ pintarElegidos(); pintarRaices(); pintarBajo(); }
+}
+$('#btnNotacion').onclick = ()=>{
+  estado.notacion = estado.notacion==='latina' ? 'inglesa' : 'latina';
+  guardar(); refrescarNotacion();
+};
+$('#btnAzar').onclick = ()=>{
+  const l = cancionesVisibles();
+  if(!l.length){ aviso('No hay canciones que sacar.'); return; }
+  abrirFicha(l[Math.floor(Math.random()*l.length)].id);
+};
+$('#btnRepertorio').onclick = abrirRepertorio;
+$('#btnAjustes').onclick = ()=>{ pintarAjustes(); abrirHoja('#hojaAjustes'); };
+$('#btnNueva').onclick = ()=>abrirEditor(null);
+$('#btnNueva2').onclick = ()=>abrirEditor(null);
+$('#buscar').oninput = e=>{ filtro.texto=e.target.value; pintarRejilla(); };
+$('#orden').onchange = e=>{ filtro.orden=e.target.value; pintarRejilla(); };
+$$('#chipsEstado .chip').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.estado;
+  if(filtro.estados.has(k)) filtro.estados.delete(k); else filtro.estados.add(k);
+  b.setAttribute('aria-pressed', filtro.estados.has(k));
+  pintarRejilla();
+});
+
+(async function arrancar(){
+  const crudo = await Almacen.leer();
+  if(crudo){
+    try{
+      const d = JSON.parse(crudo);
+      if(d && Array.isArray(d.canciones)) estado = {notacion:d.notacion||'latina', canciones:d.canciones};
+    }catch(e){}
+  }
+  refrescarNotacion();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
