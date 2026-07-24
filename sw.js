@@ -1,4 +1,4 @@
-const CACHE = 'cancionero-v1';
+const CACHE = 'cancionero-v2';
 const BASE = self.registration.scope;
 const ESENCIALES = ['', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'].map(p => BASE + p);
 
