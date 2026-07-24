@@ -289,6 +289,27 @@ main{padding:16px var(--pad) 90px}
 .estrellas button{font-size:18px;color:#4a3c33;line-height:1}
 .estrellas button.on{color:var(--albero)}
 
+/* ---------- editor de tablatura ---------- */
+.tab-editor{
+  border:1px solid var(--line);border-radius:12px;padding:12px;
+  background:#1b1410;margin-bottom:10px;
+}
+.tab-rejilla{overflow-x:auto;padding-bottom:4px}
+.tab-fila{display:flex;align-items:center;gap:3px;margin-bottom:3px}
+.tab-fila:last-child{margin-bottom:0}
+.tab-cuerda{
+  width:20px;flex:none;font-family:var(--mono);font-size:12px;
+  color:var(--muted);text-align:center;
+}
+.campo input.tabcel{
+  width:28px;height:32px;flex:none;padding:0;text-align:center;
+  font-family:var(--mono);font-size:14px;border-radius:6px;
+  background:var(--surface);border:1px solid var(--line);color:#8FB8CC;
+}
+.campo input.tabcel:focus{border-color:var(--azulejo);outline:none}
+.campo input.tabcel.lleno{background:#16262e}
+@media(max-width:640px){ .campo input.tabcel{font-size:16px;width:30px} }
+
 /* ---------- panel repertorio ---------- */
 .tarjetas-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
 .num{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface)}
@@ -565,6 +586,16 @@ main{padding:16px var(--pad) 90px}
         <button class="btn ghost" id="btnOrdenarLetra">Ordenar lo pegado</button>
         <button class="btn ghost" id="btnAcordesLetra">Sacar acordes</button>
         <button class="btn ghost" id="btnBuscarLetra">Buscar acordes ↗</button>
+        <button class="btn ghost" id="btnAbrirTab">Escribir tablatura</button>
+      </div>
+      <div class="tab-editor oculto" id="tabEditor">
+        <div class="tab-rejilla" id="tabRejilla"></div>
+        <div class="compas-pie" style="margin-top:10px">
+          <button class="btn cta" id="btnInsertarTab">Insertar en la letra</button>
+          <button class="btn ghost" id="btnMasColumnas">+8 columnas</button>
+          <button class="btn ghost" id="btnVaciarTab">Vaciar</button>
+        </div>
+        <p class="aviso">Escribe el traste en la cuerda que toca; deja en blanco lo que no suena. La cuerda de arriba es la primera (mi agudo).</p>
       </div>
       <textarea id="fLetra" spellcheck="false" style="font-family:var(--mono);font-size:13px;min-height:150px;white-space:pre" placeholder="Mi          Do#m
 Se me va la vida, se me va..."></textarea>
@@ -1164,6 +1195,8 @@ function abrirEditor(c){
   $('#fBpm').value=borrador.patron.bpm||90;
   $('#fCejilla').innerHTML = Array.from({length:13},(_,i)=>
     `<option value="${i}" ${borrador.cejilla===i?'selected':''}>${i===0?'Sin cejilla':'Traste '+i}</option>`).join('');
+  tabCols=16; tabRejilla=nuevaRejilla(tabCols); cursorLetra=null;
+  $('#tabEditor').classList.add('oculto'); $('#btnAbrirTab').textContent='Escribir tablatura';
   $('#resultadosPortada').classList.add('oculto');
   $('#avisoPortada').classList.add('oculto');
   pintarPreset(); pintarPrevia(); pintarElegidos(); pintarPestanas(); pintarCalidades();
@@ -1332,6 +1365,77 @@ $('#btnBuscarLetra').onclick = ()=>{
   const t=$('#fTitulo').value.trim(), a=$('#fArtista').value.trim();
   if(!t){ aviso('Escribe primero el título.'); return; }
   window.open('https://www.google.com/search?q='+encodeURIComponent(`${t} ${a} acordes letra`), '_blank', 'noopener');
+};
+
+/* --- escribir tablatura a mano --- */
+const CUERDAS=['e','B','G','D','A','E'];
+let tabCols=16, tabRejilla=null, cursorLetra=null;
+
+function nuevaRejilla(cols){ return CUERDAS.map(()=>Array(cols).fill('')); }
+function pintarRejillaTab(){
+  const cont=$('#tabRejilla');
+  cont.innerHTML = CUERDAS.map((n,f)=>
+    `<div class="tab-fila"><span class="tab-cuerda">${n}</span>`+
+    Array.from({length:tabCols},(_,c)=>{
+      const v=tabRejilla[f][c]||'';
+      return `<input class="tabcel ${v?'lleno':''}" type="text" inputmode="numeric" maxlength="2"
+        data-f="${f}" data-c="${c}" value="${v}" aria-label="cuerda ${n} posición ${c+1}">`;
+    }).join('')+'</div>').join('');
+  $$('.tabcel',cont).forEach(inp=>{
+    inp.oninput=()=>{
+      let v=inp.value.replace(/\D/g,'').slice(0,2);
+      if(v!=='' && +v>24) v='24';
+      inp.value=v; tabRejilla[+inp.dataset.f][+inp.dataset.c]=v;
+      inp.classList.toggle('lleno', !!v);
+      if(v.length===2 || (v.length===1 && +v>2)) siguienteCelda(inp);
+    };
+    inp.onfocus=()=>inp.select();
+  });
+}
+function siguienteCelda(inp){
+  const f=+inp.dataset.f, c=+inp.dataset.c;
+  const sig=$(`.tabcel[data-f="${f}"][data-c="${c+1}"]`);
+  if(sig) sig.focus();
+}
+function tabAscii(){
+  const anchos=[];
+  for(let c=0;c<tabCols;c++){
+    let w=1;
+    for(let f=0;f<6;f++) w=Math.max(w,(tabRejilla[f][c]||'').length);
+    anchos.push(w);
+  }
+  return CUERDAS.map((n,f)=>{
+    let l=n+'|';
+    for(let c=0;c<tabCols;c++){
+      const v=tabRejilla[f][c]||'';
+      l += '-' + v + '-'.repeat(anchos[c]-v.length);
+    }
+    return l+'-|';
+  }).join('\n');
+}
+function abrirEditorTab(){
+  if(!tabRejilla) tabRejilla=nuevaRejilla(tabCols);
+  const ed=$('#tabEditor'), abierto=!ed.classList.contains('oculto');
+  ed.classList.toggle('oculto', abierto);
+  $('#btnAbrirTab').textContent = abierto ? 'Escribir tablatura' : 'Cerrar tablatura';
+  if(!abierto) pintarRejillaTab();
+}
+$('#btnAbrirTab').onclick=abrirEditorTab;
+$('#btnMasColumnas').onclick=()=>{
+  tabCols+=8;
+  tabRejilla.forEach(f=>{ while(f.length<tabCols) f.push(''); });
+  pintarRejillaTab();
+};
+$('#btnVaciarTab').onclick=()=>{ tabRejilla=nuevaRejilla(tabCols); pintarRejillaTab(); };
+$('#fLetra').addEventListener('blur', e=>{ cursorLetra=e.target.selectionStart; });
+$('#btnInsertarTab').onclick=()=>{
+  if(!tabRejilla || !tabRejilla.some(f=>f.some(v=>v))){ aviso('La tablatura está vacía.'); return; }
+  const bloque='\n'+tabAscii()+'\n';
+  const ta=$('#fLetra'), txt=ta.value;
+  const pos = (cursorLetra!=null && cursorLetra<=txt.length) ? cursorLetra : txt.length;
+  ta.value = txt.slice(0,pos) + bloque + txt.slice(pos);
+  cursorLetra = pos + bloque.length;
+  aviso('Tablatura insertada en la letra.');
 };
 
 /* --- sacar los acordes de la letra --- */
