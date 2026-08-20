@@ -310,6 +310,18 @@ main{padding:16px var(--pad) 90px}
 .campo input.tabcel.lleno{background:#16262e}
 @media(max-width:640px){ .campo input.tabcel{font-size:16px;width:30px} }
 
+/* ---------- grabaciones ---------- */
+.grab{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.grab:last-child{border-bottom:0}
+.grab .info{flex:1 1 130px;min-width:0}
+.grab .info b{display:block;font-size:13.5px;font-weight:600}
+.grab .info span{font-size:11.5px;color:var(--muted)}
+.grab audio{height:32px;flex:1 1 190px;min-width:150px}
+.grab .acc{display:flex;gap:4px;flex:none}
+.grab .acc button{width:30px;height:30px;border:1px solid var(--line);border-radius:7px;font-size:12px;color:var(--muted)}
+.grab .acc button:hover{color:var(--ink)}
+#fichaGrabar.grabando{background:var(--granate);border-color:var(--granate);color:#fff}
+
 /* ---------- mástil de entrada ---------- */
 .mastil-cab{
   display:flex;align-items:center;gap:10px;margin-bottom:8px;
@@ -346,6 +358,34 @@ main{padding:16px var(--pad) 90px}
 .mastil-num span.aire{flex:0 0 24px;min-width:24px}
 .mastil-num span.punto{color:var(--albero)}
 .campo input.tabcel.cursor{border-color:var(--albero);box-shadow:inset 0 0 0 1px var(--albero)}
+.campo input.tabcel.sonando{background:var(--azulejo);color:#0f1a20;border-color:var(--azulejo)}
+.acorde-sugerido{
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;
+  background:#1b1410;
+}
+.acorde-sugerido .titu{font-size:11.5px;color:var(--muted);margin-bottom:8px}
+.acorde-sugerido .opciones{display:flex;gap:7px;flex-wrap:wrap}
+.acorde-sugerido .opc{
+  display:inline-flex;align-items:center;gap:7px;
+  border:1px solid var(--line);border-radius:8px;padding:7px 11px;
+  background:var(--surface);font-family:var(--mono);font-size:14px;color:var(--albero);
+}
+.acorde-sugerido .opc small{font-family:var(--body);font-size:10.5px;color:var(--muted)}
+.acorde-sugerido .opc:first-child{border-color:var(--albero)}
+.acorde-sugerido .nada{font-size:12.5px;color:var(--muted)}
+
+/* ---------- buscar acorde por digitación (bloque de acordes) ---------- */
+.busca-acorde{
+  border:1px solid var(--line);border-radius:12px;padding:12px;
+  background:#1b1410;margin-top:10px;
+}
+.busca-cab{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;color:var(--muted)}
+.busca-cab span{flex:1;min-width:0}
+.busca-cab b{color:var(--albero);font-family:var(--mono)}
+.busca-cab .btn{padding:5px 10px;font-size:11.5px}
+#btnAbrirBuscaAcorde.cta{background:var(--albero);color:#16110E;border-color:var(--albero)}
+#mastilBusca .traste.puesto{background-color:var(--albero);color:#16110E;font-weight:600;border-radius:4px}
+#mastilBusca .traste.aire.puesto{background-color:var(--albero)}
 
 /* ---------- panel repertorio ---------- */
 .tarjetas-num{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
@@ -390,6 +430,13 @@ main{padding:16px var(--pad) 90px}
 .tocar-cuerpo .l-sec{color:var(--azulejo);font-weight:600}
 .tocar-cuerpo .l-le{color:#efe3d6}
 .tocar-cuerpo .l-tab{color:#8FB8CC;font-size:var(--tab-fs,inherit);letter-spacing:-.02em}
+.tab-bloque{position:relative;padding:6px 0 6px 26px;margin:2px 0}
+.tab-bloque .tab-play{
+  position:absolute;left:0;top:8px;width:20px;height:20px;border-radius:50%;
+  border:1px solid var(--line);background:var(--surface);
+  color:var(--azulejo);font-size:9px;line-height:1;padding:0;
+}
+.tab-bloque .tab-play.sonando{background:var(--azulejo);color:#0f1a20;border-color:var(--azulejo)}
 .tocar-vacio{font-family:var(--body);white-space:normal;color:var(--muted);font-size:14px}
 .tocar-pie{
   position:absolute;left:0;right:0;bottom:0;
@@ -589,6 +636,22 @@ main{padding:16px var(--pad) 90px}
         <div class="campo" style="margin:0"><label for="fBajo">Bajo distinto (acorde con barra)</label>
           <select id="fBajo"></select></div>
       </div>
+      <button class="btn ghost" id="btnAbrirBuscaAcorde" style="margin-top:12px;width:100%">
+        ¿Ves un acorde y no sabes su nombre?
+      </button>
+      <div class="busca-acorde oculto" id="buscaAcorde">
+        <div class="busca-cab">
+          <span id="buscaNota">Marca en el mástil las cuerdas del acorde tal como lo ves.</span>
+          <button class="btn ghost" id="btnBuscaVentana">Trastes 0-12</button>
+        </div>
+        <div class="mastil" id="mastilBusca"></div>
+        <div class="acorde-sugerido oculto" id="buscaSugerido" style="margin-top:10px"></div>
+        <div class="compas-pie" style="margin-top:10px">
+          <button class="btn ghost" id="btnBuscaEscuchar">▶ Escuchar</button>
+          <button class="btn ghost" id="btnBuscaLimpiar">Limpiar</button>
+        </div>
+        <p class="aviso">Toca una casilla por cuerda; vuelve a tocarla para quitarla. Las cuerdas que no suenan, déjalas sin marcar. Arriba es la primera (mi agudo).</p>
+      </div>
     </div>
 
     <div class="campo">
@@ -635,14 +698,17 @@ main{padding:16px var(--pad) 90px}
           <button class="btn ghost" id="btnTabAcorde" aria-pressed="false">Acorde</button>
           <button class="btn ghost" id="btnTabAtras">← Borrar</button>
           <button class="btn ghost" id="btnTabHueco">Hueco →</button>
+          <button class="btn ghost" id="btnQueAcorde">¿Qué acorde es?</button>
         </div>
+        <div class="acorde-sugerido oculto" id="acordeSugerido"></div>
         <div class="tab-rejilla" id="tabRejilla"></div>
         <div class="compas-pie" style="margin-top:10px">
           <button class="btn cta" id="btnInsertarTab">Insertar en la letra</button>
           <button class="btn ghost" id="btnMasColumnas">+8 columnas</button>
+          <button class="btn ghost" id="btnEscucharTab">▶ Escuchar</button>
           <button class="btn ghost" id="btnVaciarTab">Vaciar</button>
         </div>
-        <p class="aviso">Escribe el traste en la cuerda que toca; deja en blanco lo que no suena. La cuerda de arriba es la primera (mi agudo).</p>
+        <p class="aviso">Escribe el traste en la cuerda que toca; deja en blanco lo que no suena. La cuerda de arriba es la primera (mi agudo). ¿Ves un acorde y no sabes cómo se llama? Pulsa «Acorde», ve tocando sus cuerdas en el mástil y la app te dice cuál es.</p>
       </div>
       <textarea id="fLetra" spellcheck="false" style="font-family:var(--mono);font-size:13px;min-height:150px;white-space:pre" placeholder="Mi          Do#m
 Se me va la vida, se me va..."></textarea>
@@ -695,7 +761,7 @@ Se me va la vida, se me va..."></textarea>
     </div>
     <div class="bloque">
       <h4>Copia de seguridad</h4>
-      <p class="aviso">Las canciones se guardan en este dispositivo. Exporta de vez en cuando para no perderlas.</p>
+      <p class="aviso">Las canciones se guardan en este dispositivo. Exporta de vez en cuando para no perderlas. Las grabaciones de voz no van dentro del archivo por su tamaño: descarga desde la ficha las que quieras conservar.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn" id="btnExportar">Exportar cancionero</button>
         <button class="btn" id="btnImportar">Importar</button>
@@ -767,6 +833,34 @@ const Almacen = {
   }
 };
 
+/* ---------- almacén de audio (IndexedDB: los blobs no caben en el otro) ---------- */
+window.AlmacenAudio = (function(){
+  let bd=null;
+  function abrir(){
+    return new Promise((res,rej)=>{
+      if(bd) return res(bd);
+      if(!window.indexedDB) return rej(new Error('sin indexedDB'));
+      const r=indexedDB.open('cancionero-audio',1);
+      r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('grabaciones')) r.result.createObjectStore('grabaciones'); };
+      r.onsuccess=()=>{ bd=r.result; res(bd); };
+      r.onerror=()=>rej(r.error);
+    });
+  }
+  function op(modo, fn){
+    return abrir().then(db=>new Promise((res,rej)=>{
+      const tx=db.transaction('grabaciones',modo), st=tx.objectStore('grabaciones');
+      const pet=fn(st);
+      pet.onsuccess=()=>res(pet.result);
+      pet.onerror=()=>rej(pet.error);
+    }));
+  }
+  return {
+    guardar:(id,blob)=>op('readwrite', st=>st.put(blob,id)),
+    leer:(id)=>op('readonly', st=>st.get(id)),
+    borrar:(id)=>op('readwrite', st=>st.delete(id))
+  };
+})();
+
 /* ---------- acordes ---------- */
 const RAICES = [
   {sos:'C', bem:'C'},  {sos:'C#', bem:'Db', neg:1}, {sos:'D', bem:'D'},
@@ -797,6 +891,59 @@ const SIMBOLO = {'dim':'°','dim7':'°7','aug':'+','m7b5':'m7♭5','7b5':'7♭5'
 const nombreRaiz = r => estado.notacion==='latina' ? (LATIN[r]||r) : r;
 const textoAcorde = a => nombreRaiz(a.r) + (SIMBOLO[a.q] ?? a.q) + (a.b ? '/'+nombreRaiz(a.b) : '');
 const idAcorde = a => a.r+'|'+a.q+'|'+(a.b||'');
+
+/* ---------- identificar un acorde a partir de sus notas ---------- */
+const PC=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// Cada patrón es el conjunto de intervalos (en semitonos desde la tónica).
+const PATRON_ACORDE = [
+  {q:'',      iv:[0,4,7]},
+  {q:'m',     iv:[0,3,7]},
+  {q:'7',     iv:[0,4,7,10]},
+  {q:'m7',    iv:[0,3,7,10]},
+  {q:'maj7',  iv:[0,4,7,11]},
+  {q:'6',     iv:[0,4,7,9]},
+  {q:'m6',    iv:[0,3,7,9]},
+  {q:'sus2',  iv:[0,2,7]},
+  {q:'sus4',  iv:[0,5,7]},
+  {q:'5',     iv:[0,7]},
+  {q:'add9',  iv:[0,4,7,2]},
+  {q:'9',     iv:[0,4,7,10,2]},
+  {q:'m9',    iv:[0,3,7,10,2]},
+  {q:'maj9',  iv:[0,4,7,11,2]},
+  {q:'7sus4', iv:[0,5,7,10]},
+  {q:'dim',   iv:[0,3,6]},
+  {q:'dim7',  iv:[0,3,6,9]},
+  {q:'m7b5',  iv:[0,3,6,10]},
+  {q:'aug',   iv:[0,4,8]},
+  {q:'7b9',   iv:[0,4,7,10,1]},
+  {q:'mMaj7', iv:[0,3,7,11]},
+];
+// Devuelve los mejores candidatos {r,q,b} para un conjunto de midis.
+function identificarAcorde(midis){
+  if(!midis || !midis.length) return [];
+  const bajo = Math.min(...midis) % 12;
+  const clases = [...new Set(midis.map(m=>((m%12)+12)%12))].sort((a,b)=>a-b);
+  if(clases.length<2) return [];
+  const objetivo = new Set(clases);
+  const cand = [];
+  for(let raiz=0; raiz<12; raiz++){
+    for(const pat of PATRON_ACORDE){
+      const notas = new Set(pat.iv.map(i=>(raiz+i)%12));
+      if(notas.size!==objetivo.size) continue;
+      let igual=true;
+      for(const n of objetivo) if(!notas.has(n)){ igual=false; break; }
+      if(!igual) continue;
+      const conBajo = (raiz!==bajo && objetivo.has(bajo));
+      cand.push({
+        r: PC[raiz], q: pat.q,
+        b: conBajo ? PC[bajo] : null,
+        peso: pat.iv.length + (raiz===bajo?0:2) + (pat.q===''?0:0.1)
+      });
+    }
+  }
+  cand.sort((a,b)=>a.peso-b.peso);
+  return cand.slice(0,4).map(({r,q,b})=>({r,q,b}));
+}
 
 /* ---------- transporte ---------- */
 const SEMI={C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
@@ -892,12 +1039,46 @@ const tieneTab = c => String(c.letra||'').split('\n').some(esLineaTab);
 
 function pintarLetra(cont, texto, n){
   const lineas=String(texto||'').split('\n');
-  cont.innerHTML = lineas.map(l=>{
-    if(esLineaTab(l)) return `<div class="l-tab">${esc(transportarTab(l,n))}</div>`;
-    if(/^\s*[[(].{1,28}[\])]\s*$/.test(l) && !esLineaAcordes(l)) return `<div class="l-sec">${esc(l)}</div>`;
-    if(esLineaAcordes(l)) return `<div class="l-ac">${esc(transportarLinea(l,n))}</div>`;
-    return `<div class="l-le">${l.trim()?esc(l):'&nbsp;'}</div>`;
-  }).join('');
+  let html='', bloque=[], nBloque=0;
+  const cerrar=()=>{
+    if(!bloque.length) return;
+    html += `<div class="tab-bloque" data-bloque="${nBloque++}">`+
+      `<button class="tab-play" aria-label="Escuchar la tablatura">\u25b6</button>`+
+      bloque.map(l=>`<div class="l-tab">${esc(l)}</div>`).join('')+'</div>';
+    bloque=[];
+  };
+  for(const l of lineas){
+    if(esLineaTab(l)){ bloque.push(transportarTab(l,n)); continue; }
+    cerrar();
+    if(/^\s*[[(].{1,28}[\])]\s*$/.test(l) && !esLineaAcordes(l)) html += `<div class="l-sec">${esc(l)}</div>`;
+    else if(esLineaAcordes(l)) html += `<div class="l-ac">${esc(transportarLinea(l,n))}</div>`;
+    else html += `<div class="l-le">${l.trim()?esc(l):'&nbsp;'}</div>`;
+  }
+  cerrar();
+  cont.innerHTML = html;
+}
+
+/* --- leer una tablatura escrita y convertirla en notas --- */
+const ORDEN_AGUDO=[64,59,55,50,45,40];
+function midisDeBloque(lineas){
+  const etiquetas = lineas.map(l=>{ const m=l.match(/^\s*([a-gA-G][#b]?)\s*\|/); return m?m[1]:null; });
+  const alReves = etiquetas[0]==='E' && etiquetas[5]==='e';
+  const afinacion = alReves ? [...ORDEN_AGUDO].reverse() : ORDEN_AGUDO;
+  const cuerpos = lineas.map(l=>{ const i=l.indexOf('|'); return i<0 ? l : l.slice(i+1); });
+  const eventos = {};
+  cuerpos.forEach((cuerpo,f)=>{
+    for(let i=0;i<cuerpo.length;i++){
+      if(!/\d/.test(cuerpo[i])) continue;
+      let num=cuerpo[i];
+      if(/\d/.test(cuerpo[i+1]||'')) num+=cuerpo[i+1];
+      const traste=+num;
+      if(traste<=24){
+        (eventos[i]=eventos[i]||[]).push(afinacion[f]+traste);
+      }
+      i += num.length-1;
+    }
+  });
+  return Object.keys(eventos).map(Number).sort((a,b)=>a-b).map(k=>eventos[k]);
 }
 function pistaCejilla(c){
   const cej=c.cejilla||0;
@@ -1087,9 +1268,16 @@ function abrirFicha(id){
     ${c.letra?`<div class="bloque"><h4>Letra y acordes</h4>
       <div class="tocar-cuerpo" id="fichaLetra" style="max-height:340px;padding:0;font-size:13.5px"></div></div>`:''}
     ${c.notas?`<div class="bloque"><h4>Notas</h4><p class="notas">${esc(c.notas)}</p></div>`:''}
+    <div class="bloque"><h4>Grabaciones</h4>
+      <div class="compas-pie">
+        <button class="btn" id="fichaGrabar">● Grabar</button>
+        <span id="fichaGrabEstado">Guarda cómo te sale hoy, para comparar dentro de un mes.</span>
+      </div>
+      <div id="fichaGrabs"></div>
+    </div>
     <div class="bloque"><button class="btn" id="fichaAñadirLista">Añadir a una lista</button></div>
   `;
-  if(c.letra) pintarLetra($('#fichaLetra'), c.letra, desplazamiento(c));
+  if(c.letra){ pintarLetra($('#fichaLetra'), c.letra, desplazamiento(c)); activarBloquesTab($('#fichaLetra'), c); }
   if($('#fichaTonoValor')){
     const pinta=()=>{ const t=c.transporte||0;
       $('#fichaTonoValor').textContent = (t>0?'+':'')+t + (tonalidadDe(c)?' · '+tonalidadDe(c):''); };
@@ -1098,6 +1286,8 @@ function abrirFicha(id){
     $('#fichaTonoMas').onclick=()=>{ c.transporte=(c.transporte||0)+1; guardar(); abrirFicha(c.id); pintarRejilla(); };
   }
   $('#fichaAñadirLista').onclick=()=>abrirListas({añadir:c.id});
+  pintarGrabaciones(c);
+  $('#fichaGrabar').onclick=()=>alternarGrabacion(c);
   if(c.patron){
     pintarCompas($('#fichaCompas'), c.patron, false);
     $('#fichaEscuchar').onclick = e => reproducir(e.currentTarget, c.patron, $('#fichaCompas'));
@@ -1130,6 +1320,108 @@ function pintarCompas(cont, patron, editable){
       pintarCompas(cont, patron, true);
     });
   }
+}
+
+/* ---------- grabaciones ---------- */
+let grabadora=null, grabTemp=null, grabDesde=0;
+
+const mmss = seg => Math.floor(seg/60)+':'+String(Math.floor(seg%60)).padStart(2,'0');
+function fechaCorta(ts){
+  const d=new Date(ts);
+  return d.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})+
+    ' · '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+}
+function tipoAudio(){
+  if(typeof MediaRecorder==='undefined') return '';
+  for(const t of ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/aac']){
+    try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t; }catch(e){}
+  }
+  return '';
+}
+async function alternarGrabacion(c){
+  if(grabadora){ try{ grabadora.stop(); }catch(e){} return; }
+  const bt=$('#fichaGrabar'), est=$('#fichaGrabEstado');
+  try{
+    const flujo = await navigator.mediaDevices.getUserMedia({audio:true});
+    const tipo = tipoAudio();
+    grabadora = new MediaRecorder(flujo, tipo?{mimeType:tipo}:undefined);
+    const trozos=[];
+    grabadora.ondataavailable = e=>{ if(e.data && e.data.size) trozos.push(e.data); };
+    grabadora.onstop = async ()=>{
+      clearInterval(grabTemp);
+      try{ flujo.getTracks().forEach(t=>t.stop()); }catch(e){}
+      const dur = Math.round((Date.now()-grabDesde)/1000);
+      const blob = new Blob(trozos, {type: tipo || 'audio/webm'});
+      grabadora=null;
+      bt.classList.remove('grabando'); bt.textContent='\u25cf Grabar';
+      if(dur<1 || !blob.size){ est.textContent='Grabación demasiado corta.'; return; }
+      const id='g'+Date.now().toString(36);
+      try{
+        await AlmacenAudio.guardar(id, blob);
+        c.grabaciones = c.grabaciones||[];
+        c.grabaciones.unshift({id, fecha:Date.now(), dur});
+        guardar();
+        est.textContent='Grabación guardada.';
+        pintarGrabaciones(c);
+      }catch(err){ est.textContent='No se ha podido guardar la grabación.'; }
+    };
+    grabadora.start();
+    grabDesde=Date.now();
+    bt.classList.add('grabando'); bt.textContent='\u25a0 Parar 0:00';
+    grabTemp=setInterval(()=>{
+      const seg=Math.round((Date.now()-grabDesde)/1000);
+      bt.textContent='\u25a0 Parar '+mmss(seg);
+      if(seg>=60){ try{ grabadora.stop(); }catch(e){} }
+    },250);
+    est.textContent='Grabando… se para sola al minuto.';
+  }catch(err){
+    grabadora=null;
+    est.textContent = (err && err.name==='NotAllowedError')
+      ? 'No has dado permiso al micrófono.'
+      : 'Este navegador no deja grabar aquí.';
+  }
+}
+async function pintarGrabaciones(c){
+  const cont=$('#fichaGrabs');
+  if(!cont) return;
+  const lista=c.grabaciones||[];
+  if(!lista.length){ cont.innerHTML=''; return; }
+  cont.innerHTML = lista.map(g=>`<div class="grab" data-g="${g.id}">
+      <div class="info"><b>${esc(mmss(g.dur))}</b><span>${esc(fechaCorta(g.fecha))}</span></div>
+      <audio controls preload="none"></audio>
+      <div class="acc">
+        <button data-baja="${g.id}" aria-label="Descargar">\u2193</button>
+        <button data-borra="${g.id}" aria-label="Borrar">\u2715</button>
+      </div>
+    </div>`).join('');
+  for(const g of lista){
+    const fila=cont.querySelector(`[data-g="${g.id}"]`);
+    if(!fila) continue;
+    try{
+      const blob=await AlmacenAudio.leer(g.id);
+      if(blob){ fila.querySelector('audio').src=URL.createObjectURL(blob); }
+      else fila.querySelector('audio').replaceWith(
+        Object.assign(document.createElement('span'),
+          {className:'vacio-min', textContent:'audio no disponible en este dispositivo'}));
+    }catch(e){}
+  }
+  $$('[data-baja]',cont).forEach(b=>b.onclick=async ()=>{
+    try{
+      const blob=await AlmacenAudio.leer(b.dataset.baja);
+      if(!blob) return;
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=(c.titulo||'grabacion').replace(/[^\w\s-]/g,'')+'-'+b.dataset.baja+
+        ((blob.type||'').includes('mp4')?'.m4a':'.webm');
+      a.click();
+    }catch(e){ aviso('No he podido descargarla.'); }
+  });
+  $$('[data-borra]',cont).forEach(b=>b.onclick=async ()=>{
+    if(!confirm('¿Borrar esta grabación?')) return;
+    try{ await AlmacenAudio.borrar(b.dataset.borra); }catch(e){}
+    c.grabaciones=(c.grabaciones||[]).filter(x=>x.id!==b.dataset.borra);
+    guardar(); pintarGrabaciones(c);
+  });
 }
 
 /* ---------- hojas ---------- */
@@ -1209,6 +1501,7 @@ function reproducir(btn, patron, cont){
   tocando={temps, btn, cont};
 }
 function pararAudio(){
+  if(secuencia) pararSecuencia();
   if(!tocando) return;
   tocando.temps.forEach(clearTimeout);
   marcar(tocando.cont,-1);
@@ -1226,7 +1519,7 @@ function nuevaCancion(){
   const p = PATRONES.find(x=>x.id==='balada');
   return {id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
     titulo:'', artista:'', portada:null, tono:'', cejilla:0, estado:'aprendiendo',
-    acordes:[], letra:'', transporte:0, patron:{id:p.id, n:p.n, u:p.u, c:p.c.slice(), bpm:90},
+    acordes:[], letra:'', transporte:0, grabaciones:[], patron:{id:p.id, n:p.n, u:p.u, c:p.c.slice(), bpm:90},
     dificultad:2, fav:false, notas:'', enlace:'', creado:Date.now(), ultimaVez:0};
 }
 
@@ -1245,7 +1538,9 @@ function abrirEditor(c){
   tabCols=16; tabRejilla=nuevaRejilla(tabCols); cursorLetra=null;
   tabCursor=0; tabAcorde=false; tabDesde=0;
   $('#btnTabAcorde').setAttribute('aria-pressed','false'); $('#btnTabAcorde').classList.remove('cta');
+  $('#acordeSugerido').classList.add('oculto');
   $('#tabEditor').classList.add('oculto'); $('#btnAbrirTab').textContent='Escribir tablatura';
+  reiniciarBusca();
   $('#resultadosPortada').classList.add('oculto');
   $('#avisoPortada').classList.add('oculto');
   pintarPreset(); pintarPrevia(); pintarElegidos(); pintarPestanas(); pintarCalidades();
@@ -1299,6 +1594,89 @@ function pintarBajo(){
   }).join('');
   if(v) sel.value=v;
 }
+
+/* --- buscar acorde por su digitación en el mástil --- */
+const CUERDAS_MIDI=[64,59,55,50,45,40];  // 1ª (mi agudo) → 6ª (mi grave)
+let buscaDig=[null,null,null,null,null,null], buscaDesde=0;
+
+function pintarMastilBusca(){
+  const cont=$('#mastilBusca'); if(!cont) return;
+  const trastes=Array.from({length:13},(_,i)=>buscaDesde+i);
+  cont.innerHTML='<div class="mastil-cuerpo">'+
+    CUERDAS.map((n,f)=>'<div class="mastil-fila"><span class="etq">'+n+'</span>'+
+      trastes.map(t=>{
+        const puesto = buscaDig[f]===t;
+        return `<button class="traste ${t===0?'aire':''} ${puesto?'puesto':''}" data-f="${f}" data-t="${t}"
+          aria-label="cuerda ${n} traste ${t}">${t}</button>`;
+      }).join('')+'</div>').join('')+
+    '<div class="mastil-num"><span class="etq"></span>'+
+      trastes.map(t=>`<span class="${t===0?'aire ':''}${PUNTOS.includes(t)?'punto':''}">${t}</span>`).join('')+
+    '</div></div>';
+  $$('.traste',cont).forEach(b=>b.onclick=()=>{
+    const f=+b.dataset.f, t=+b.dataset.t;
+    buscaDig[f] = (buscaDig[f]===t) ? null : t;      // vuelve a tocar = quitar
+    if(buscaDig[f]!==null) sonarNota(CUERDAS_MIDI[f]+t);
+    pintarMastilBusca(); sugerirBusca();
+  });
+  $('#btnBuscaVentana').textContent='Trastes '+buscaDesde+'-'+(buscaDesde+12);
+}
+function midisBusca(){
+  const m=[];
+  buscaDig.forEach((t,f)=>{ if(t!==null) m.push(CUERDAS_MIDI[f]+t); });
+  return m;
+}
+function sugerirBusca(){
+  const caja=$('#buscaSugerido'), midis=midisBusca();
+  const marcadas=midis.length;
+  if(marcadas){
+    const clases=[...new Set(midis.map(m=>((m%12)+12)%12))];
+    $('#buscaNota').innerHTML=marcadas+' '+(marcadas===1?'cuerda':'cuerdas')+' · '+
+      clases.map(pc=>'<b>'+esc(nombreRaiz(PC[pc]))+'</b>').join(' ');
+  }else{
+    $('#buscaNota').textContent='Marca en el mástil las cuerdas del acorde tal como lo ves.';
+  }
+  if(marcadas<2){ caja.classList.add('oculto'); return; }
+  const cand=identificarAcorde(midis);
+  caja.classList.remove('oculto');
+  if(!cand.length){
+    caja.innerHTML='<div class="titu">Esas notas no me cuadran con ningún acorde conocido.</div>'+
+      '<div class="nada">Revisa las cuerdas, o añádelo a mano con las tónicas de arriba.</div>';
+    return;
+  }
+  caja.innerHTML='<div class="titu">Creo que es… (toca para añadirlo a los acordes de la canción)</div>'+
+    '<div class="opciones">'+cand.map((a,i)=>{
+      const nom=Object.values(CALIDADES).flat().find(x=>x[0]===a.q);
+      return `<button class="opc" data-i="${i}">${esc(textoAcorde(a))}`+
+        (nom?`<small>${esc(nom[1])}</small>`:'')+'</button>';
+    }).join('')+'</div>';
+  $$('.opc',caja).forEach(b=>b.onclick=()=>{
+    const a=cand[+b.dataset.i];
+    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
+    borrador.acordes.push({r:a.r,q:a.q,b:a.b}); pintarElegidos();
+    aviso(textoAcorde(a)+' añadido a la canción.');
+  });
+}
+function reiniciarBusca(){
+  buscaDig=[null,null,null,null,null,null]; buscaDesde=0;
+  $('#buscaAcorde').classList.add('oculto');
+  $('#btnAbrirBuscaAcorde').classList.remove('cta');
+  $('#buscaSugerido').classList.add('oculto');
+}
+$('#btnAbrirBuscaAcorde').onclick=e=>{
+  const caja=$('#buscaAcorde'), abierto=!caja.classList.contains('oculto');
+  caja.classList.toggle('oculto', abierto);
+  e.currentTarget.classList.toggle('cta', !abierto);
+  if(!abierto){ pintarMastilBusca(); sugerirBusca(); }
+};
+$('#btnBuscaVentana').onclick=()=>{ buscaDesde = buscaDesde===0 ? 12 : 0; pintarMastilBusca(); };
+$('#btnBuscaLimpiar').onclick=()=>{ buscaDig=[null,null,null,null,null,null]; pintarMastilBusca(); sugerirBusca(); };
+$('#btnBuscaEscuchar').onclick=()=>{
+  const midis=midisBusca();
+  if(midis.length<1){ aviso('Marca antes alguna cuerda.'); return; }
+  let ac; try{ ac=ctxAudio(); }catch(e){ aviso('Este navegador no deja sonar.'); return; }
+  const grave=midis.slice().sort((a,b)=>b-a);   // de la 6ª a la 1ª, como al rasguear hacia abajo
+  grave.forEach((m,i)=>sonarNota(m, ac.currentTime+0.03+i*0.055, 1.6));
+};
 function pintarEstrellas(){
   const c=$('#fDificultad');
   c.innerHTML = [1,2,3,4,5].map(i=>`<button data-i="${i}" class="${i<=borrador.dificultad?'on':''}" aria-label="Dificultad ${i}">●</button>`).join('');
@@ -1424,7 +1802,6 @@ function nuevaRejilla(cols){ return CUERDAS.map(()=>Array(cols).fill('')); }
 
 /* --- mástil --- */
 const MIDI_CUERDA=[64,59,55,50,45,40];           // mi agudo → mi grave
-const PC=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const PUNTOS=[3,5,7,9,12,15,17,19,21,24];
 let tabCursor=0, tabAcorde=false, tabDesde=0;
 
@@ -1453,19 +1830,93 @@ function pulsarTraste(f,t,boton){
   if(boton){ boton.classList.add('suena'); setTimeout(()=>boton.classList.remove('suena'),260); }
   if(!tabAcorde) tabCursor++;
   pintarRejillaTab();
+  if(tabAcorde) sugerirAcordeColumna();
 }
-function sonarNota(midi){
+
+/* --- lee las notas de la columna del cursor y sugiere el acorde --- */
+function midisColumnaCursor(){
+  const midis=[];
+  for(let f=0;f<6;f++){ const v=tabRejilla[f][tabCursor]; if(v!=='') midis.push(MIDI_CUERDA[f]+ +v); }
+  return midis;
+}
+function sugerirAcordeColumna(auto){
+  const caja=$('#acordeSugerido');
+  const midis=midisColumnaCursor();
+  if(midis.length<2){
+    if(auto){ caja.classList.add('oculto'); return; }
+    caja.classList.remove('oculto');
+    caja.innerHTML='<div class="nada">Pon al menos dos notas en el mástil (en modo acorde) y te digo qué acorde es.</div>';
+    return;
+  }
+  const cand=identificarAcorde(midis);
+  caja.classList.remove('oculto');
+  if(!cand.length){
+    caja.innerHTML='<div class="titu">Esas notas no me cuadran con ningún acorde conocido.</div>'+
+      '<div class="nada">Puedes guardarlo igualmente como digitación en la tablatura.</div>';
+    return;
+  }
+  caja.innerHTML='<div class="titu">Creo que es… (toca para añadirlo a los acordes de la canción)</div>'+
+    '<div class="opciones">'+cand.map((a,i)=>{
+      const nom=CALIDADES && Object.values(CALIDADES).flat().find(x=>x[0]===a.q);
+      return `<button class="opc" data-i="${i}">${esc(textoAcorde(a))}`+
+        (nom?`<small>${esc(nom[1])}</small>`:'')+'</button>';
+    }).join('')+'</div>';
+  $$('.opc',caja).forEach(b=>b.onclick=()=>{
+    const a=cand[+b.dataset.i];
+    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
+    borrador.acordes.push({r:a.r,q:a.q,b:a.b}); pintarElegidos();
+    aviso(textoAcorde(a)+' añadido a la canción.');
+  });
+}
+function sonarNota(midi, cuando, dur){
   let ac;
   try{ ac=ctxAudio(); }catch(e){ return; }
-  const fr=440*Math.pow(2,(midi-69)/12), t=ac.currentTime+0.01;
+  const fr=440*Math.pow(2,(midi-69)/12), t=(cuando!=null?cuando:ac.currentTime+0.01);
+  const larga=dur||1.1;
   const o=ac.createOscillator(), o2=ac.createOscillator(), g=ac.createGain(), g2=ac.createGain();
   o.type='triangle'; o.frequency.value=fr;
   o2.type='sine'; o2.frequency.value=fr*2; g2.gain.value=0.22;
   g.gain.setValueAtTime(.0001,t);
   g.gain.exponentialRampToValueAtTime(.32,t+.006);
-  g.gain.exponentialRampToValueAtTime(.0001,t+1.1);
+  g.gain.exponentialRampToValueAtTime(.0001,t+larga);
   o.connect(g); o2.connect(g2); g2.connect(g); g.connect(ac.destination);
-  o.start(t); o2.start(t); o.stop(t+1.2); o2.stop(t+1.2);
+  o.start(t); o2.start(t); o.stop(t+larga+.1); o2.stop(t+larga+.1);
+}
+
+/* --- escuchar una tablatura --- */
+let secuencia=null;
+function pararSecuencia(){
+  if(!secuencia) return;
+  secuencia.temps.forEach(clearTimeout);
+  if(secuencia.boton) secuencia.boton.classList.remove('sonando');
+  if(secuencia.alPaso) secuencia.alPaso(-1);
+  secuencia=null;
+  if(AC){ try{ AC.close(); }catch(e){} AC=null; ruidoBuf=null; }
+}
+function tocarNotas(columnas, bpm, boton, alPaso){
+  if(secuencia){ pararSecuencia(); return; }
+  if(!columnas.length){ aviso('Ahí no hay notas que tocar.'); return; }
+  let ac;
+  try{ ac=ctxAudio(); }catch(e){ aviso('Este navegador no deja sonar.'); return; }
+  const paso=60/(bpm||120), t0=ac.currentTime+.08, temps=[];
+  columnas.forEach((notas,i)=>{
+    const t=t0+i*paso;
+    notas.forEach(m=>sonarNota(m, t, Math.max(.35, paso*1.9)));
+    if(alPaso) temps.push(setTimeout(()=>alPaso(i), Math.max(0,(t-ac.currentTime)*1000)));
+  });
+  if(boton) boton.classList.add('sonando');
+  temps.push(setTimeout(pararSecuencia, (t0+columnas.length*paso-ac.currentTime)*1000+400));
+  secuencia={temps, boton, alPaso};
+}
+function activarBloquesTab(cont, cancion){
+  $$('.tab-bloque',cont).forEach(bl=>{
+    const lineas=$$('.l-tab',bl).map(x=>x.textContent);
+    const columnas=midisDeBloque(lineas).map(notas=>notas.map(m=>m+(cancion?.cejilla||0)));
+    bl.querySelector('.tab-play').onclick=e=>{
+      e.stopPropagation();
+      tocarNotas(columnas, (cancion?.patron?.bpm)||110, e.currentTarget);
+    };
+  });
 }
 $('#btnVentanaTrastes').onclick=()=>{ tabDesde = tabDesde===0 ? 12 : 0; pintarMastil(); };
 $('#btnTabAcorde').onclick=e=>{
@@ -1473,8 +1924,19 @@ $('#btnTabAcorde').onclick=e=>{
   e.currentTarget.setAttribute('aria-pressed',tabAcorde);
   e.currentTarget.classList.toggle('cta',tabAcorde);
   $('#tabNota').textContent = tabAcorde
-    ? 'Modo acorde: las notas se apilan en la misma columna'
+    ? 'Modo acorde: ve pulsando las cuerdas del acorde que ves'
     : 'Toca el mástil para ir escribiendo';
+  if(tabAcorde) sugerirAcordeColumna(true);
+  else $('#acordeSugerido').classList.add('oculto');
+};
+$('#btnQueAcorde').onclick=()=>{
+  if(!tabAcorde){
+    tabAcorde=true;
+    $('#btnTabAcorde').setAttribute('aria-pressed','true');
+    $('#btnTabAcorde').classList.add('cta');
+    $('#tabNota').textContent='Modo acorde: ve pulsando las cuerdas del acorde que ves';
+  }
+  sugerirAcordeColumna();
 };
 $('#btnTabHueco').onclick=()=>{
   if(tabCursor>=tabCols){ tabCols+=8; tabRejilla.forEach(f=>{ while(f.length<tabCols) f.push(''); }); }
@@ -1502,7 +1964,7 @@ function pintarRejillaTab(){
       inp.classList.toggle('lleno', !!v);
       if(v.length===2 || (v.length===1 && +v>2)) siguienteCelda(inp);
     };
-    inp.onfocus=()=>{ tabCursor=+inp.dataset.c; marcarCursor(); inp.select(); };
+    inp.onfocus=()=>{ tabCursor=+inp.dataset.c; marcarCursor(); inp.select(); if(tabAcorde) sugerirAcordeColumna(true); };
   });
 }
 function marcarCursor(){
@@ -1543,6 +2005,23 @@ $('#btnMasColumnas').onclick=()=>{
   pintarRejillaTab();
 };
 $('#btnVaciarTab').onclick=()=>{ tabRejilla=nuevaRejilla(tabCols); tabCursor=0; pintarRejillaTab(); };
+$('#btnEscucharTab').onclick=e=>{
+  const columnas=[];
+  for(let c=0;c<tabCols;c++){
+    const notas=[];
+    for(let f=0;f<6;f++){ const v=tabRejilla[f][c]; if(v!=='') notas.push(MIDI_CUERDA[f]+ +v); }
+    if(notas.length) columnas.push({c, notas});
+  }
+  if(!columnas.length){ aviso('La tablatura está vacía.'); return; }
+  const bt=e.currentTarget;
+  bt.textContent='■ Parar';
+  tocarNotas(columnas.map(x=>x.notas), +$('#fBpm').value||110, null, i=>{
+    $$('.tabcel').forEach(inp=>inp.classList.remove('sonando'));
+    if(i<0){ bt.textContent='▶ Escuchar'; return; }
+    const col=columnas[i].c;
+    $$(`.tabcel[data-c="${col}"]`).forEach(inp=>inp.classList.add('sonando'));
+  });
+};
 $('#fLetra').addEventListener('blur', e=>{ cursorLetra=e.target.selectionStart; });
 $('#btnInsertarTab').onclick=()=>{
   if(!tabRejilla || !tabRejilla.some(f=>f.some(v=>v))){ aviso('La tablatura está vacía.'); return; }
@@ -1623,6 +2102,8 @@ $('#btnGuardar').onclick = ()=>{
 $('#btnBorrar').onclick = ()=>{
   if(!editandoId) return;
   if(!confirm('¿Borrar esta canción del cancionero?')) return;
+  const vieja = estado.canciones.find(c=>c.id===editandoId);
+  (vieja?.grabaciones||[]).forEach(g=>{ try{ AlmacenAudio.borrar(g.id); }catch(e){} });
   estado.canciones = estado.canciones.filter(c=>c.id!==editandoId);
   guardar(); pintarRejilla(); cerrarHoja('#hojaEditor'); aviso('Canción borrada.');
 };
@@ -1703,7 +2184,7 @@ function pintarTocar(){
   const cuerpo = $('#tocarCuerpo');
   cuerpo.style.fontSize = tamLetra+'px';
   ajustarTab(cuerpo, c);
-  if(c.letra) pintarLetra(cuerpo, c.letra, desplazamiento(c));
+  if(c.letra){ pintarLetra(cuerpo, c.letra, desplazamiento(c)); activarBloquesTab(cuerpo, c); }
   else cuerpo.innerHTML = `<div class="l-ac">${esc(acordesDe(c).map(a=>textoAcorde(a)).join('   '))}</div>`+
     `<div class="tocar-vacio">Esta canción no tiene letra guardada. Edítala y pega la letra con los acordes en la línea de encima para verla aquí.</div>`;
   cuerpo.scrollTop = 0;
@@ -1970,7 +2451,7 @@ async function procesarEntrada(){
       const d = JSON.parse(crudo);
       if(d && Array.isArray(d.canciones)){
         estado = {notacion:d.notacion||'latina', canciones:d.canciones, listas:Array.isArray(d.listas)?d.listas:[]};
-        estado.canciones.forEach(c=>{ c.letra=c.letra||''; c.transporte=c.transporte||0; });
+        estado.canciones.forEach(c=>{ c.letra=c.letra||''; c.transporte=c.transporte||0; c.grabaciones=c.grabaciones||[]; });
       }
     }catch(e){}
   }
