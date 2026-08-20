@@ -913,68 +913,83 @@ const idAcorde = a => a.r+'|'+a.q+'|'+(a.b||'');
    dig = [1ª, 2ª, 3ª, 4ª, 5ª, 6ª]  (mi agudo → mi grave)
    cada valor: número de traste, 0 = al aire, 'x' = no suena           */
 const AFIN=[64,59,55,50,45,40];   // midi de cada cuerda al aire, 1ª→6ª
-// Formas base. movil:true = se puede desplazar por el mástil (cejilla).
-// dig en orden [1ª,2ª,3ª,4ª,5ª,6ª] = mi agudo → mi grave.
-// Las formas móviles se dan como si estuvieran en el traste 1 (cejilla al 1).
-const FORMAS_BASE = {
-  '':     [[4,[0,0,1,2,2,0],false],   [9,[0,2,2,2,0,'x'],false], [2,[2,3,2,0,'x','x'],false], [0,[0,1,0,2,3,'x'],false],
-           [5,[1,1,2,3,3,1],true],    [10,[1,3,3,3,1,'x'],true]],   // cejilla tipo E (raíz 6ª) y tipo A (raíz 5ª)
-  'm':    [[4,[0,0,0,2,2,0],false],   [9,[0,1,2,2,0,'x'],false], [2,[1,3,2,0,'x','x'],false],
-           [5,[1,1,1,3,3,1],true],    [10,[1,2,3,3,1,'x'],true]],
-  '7':    [[4,[0,3,1,2,2,0],false],   [9,[0,2,0,2,0,'x'],false], [0,['x',1,3,2,3,'x'],false],
-           [5,[1,1,2,1,3,1],true],    [10,[1,3,1,3,1,'x'],true]],
-  'm7':   [[4,[0,3,0,2,2,0],false],   [9,[0,1,0,2,0,'x'],false], [2,[1,1,2,0,'x','x'],false],
-           [5,[1,1,1,1,3,1],true],    [10,[1,2,1,3,1,'x'],true]],
-  'maj7': [[0,[0,0,0,2,3,'x'],false], [9,[0,1,1,2,0,'x'],false], [4,[0,0,1,1,2,0],false],
-           [5,[1,1,2,2,3,1],true],    [10,[1,3,2,3,1,'x'],true]],
-  '6':    [[4,[2,2,1,2,2,0],false],   [0,[0,1,2,2,3,'x'],false], [9,[2,2,2,2,0,'x'],false]],
-  'm6':   [[9,[2,1,2,2,0,'x'],false], [4,[2,0,1,2,2,0],false]],
-  'sus2': [[2,[0,3,2,0,'x','x'],false], [9,[0,0,2,2,0,'x'],false], [0,[3,3,0,0,3,'x'],false]],
-  'sus4': [[4,[0,0,2,2,2,0],false],   [9,[0,3,2,2,0,'x'],false], [2,[3,3,2,0,'x','x'],false],
-           [5,[1,1,3,3,3,1],true]],
-  '5':    'pw',
-  'add9': [[0,[0,3,0,2,3,'x'],false], [4,[2,0,1,4,2,0],false]],
-  '9':    [[0,[3,3,3,2,3,'x'],false], [4,[2,0,0,0,2,0],false]],
-  'm9':   [[9,[0,1,0,1,0,'x'],false]],
-  'maj9': [[0,[0,0,0,4,3,'x'],false]],
-  'dim':  [[2,[1,0,1,0,'x','x'],true]],
-  'dim7': [[10,[1,2,1,2,'x','x'],true]],
-  'm7b5': [[10,[1,1,1,2,'x','x'],true]],
-  'aug':  [[0,[3,1,1,2,3,'x'],false]],
-  '7sus4':[[4,[0,3,2,2,2,0],false],   [9,[0,3,0,2,0,'x'],false]],
+
+// 1) Formas ABIERTAS reales, por acorde concreto. Son las de toda la vida.
+//    clave = raíz(inglés)+calidad.  Si un acorde está aquí, se usa tal cual.
+const ABIERTOS = {
+  // mayores
+  'C':[0,1,0,2,3,'x'], 'A':[0,2,2,2,0,'x'], 'G':[3,0,0,0,2,3], 'E':[0,0,1,2,2,0],
+  'D':[2,3,2,0,'x','x'], 'F':[1,1,2,3,3,1],
+  // menores
+  'Am':[0,1,2,2,0,'x'], 'Em':[0,0,0,2,2,0], 'Dm':[1,3,2,0,'x','x'],
+  // séptimas de dominante
+  'A7':[0,2,0,2,0,'x'], 'B7':[2,0,2,1,2,'x'], 'C7':[0,1,3,2,3,'x'],
+  'D7':[2,1,2,0,'x','x'], 'E7':[0,0,1,0,2,0], 'G7':[1,0,0,0,2,3],
+  // menor 7
+  'Am7':[0,1,0,2,0,'x'], 'Dm7':[1,1,2,0,'x','x'], 'Em7':[0,0,0,0,2,0],
+  // mayor 7
+  'Cmaj7':[0,0,0,2,3,'x'], 'Amaj7':[0,2,1,2,0,'x'], 'Dmaj7':[2,2,2,0,'x','x'],
+  'Fmaj7':[0,1,2,3,'x','x'], 'Gmaj7':[2,0,0,0,2,3], 'Emaj7':[0,0,1,1,2,0],
+  // sextas
+  'C6':[0,1,2,2,3,3], 'A6':[2,2,2,2,0,'x'], 'G6':[0,0,0,0,2,3], 'E6':[0,2,1,2,2,0], 'D6':[2,0,2,0,'x','x'],
+  // menor 6
+  'Am6':[2,1,2,2,0,'x'], 'Em6':[0,2,0,2,2,0], 'Dm6':[1,0,2,0,'x','x'],
+  // sus4 / sus2
+  'Dsus4':[3,3,2,0,'x','x'], 'Dsus2':[0,3,2,0,'x','x'], 'Asus4':[0,3,2,2,0,'x'], 'Asus2':[0,0,2,2,0,'x'],
+  'Esus4':[0,0,2,2,2,0], 'Csus2':[3,3,0,0,3,'x'], 'Gsus4':[3,1,0,0,3,3],
+  // novena / add9 comunes
+  'Cadd9':[0,3,0,2,3,'x'], 'Gadd9':[3,0,0,0,0,3],
+  'C9':['x',3,3,2,3,'x'], 'E9':[2,0,1,0,2,0], 'A9':[0,2,4,2,0,'x'],
+  // menor 9
+  'Am9':[0,3,0,1,0,'x'], 'Em9':[0,0,0,0,0,2],
+  // séptima sus4
+  'A7sus4':[0,3,0,2,0,'x'], 'D7sus4':[3,1,2,0,'x','x'], 'E7sus4':[0,3,0,0,2,0],
+  // disminuidos / aumentados abiertos habituales
+  'Edim':[0,2,0,2,'x','x'], 'Aaug':[1,2,2,2,0,'x'], 'Eaug':[0,1,1,2,'x',0],
 };
-// distancia (en semitonos, hacia arriba) de una forma base a la tónica pedida
-function desplazaForma(baseRaiz, destinoRaiz){
-  const pcBase=SEMI[baseRaiz], pcDest=SEMI[normRaiz(destinoRaiz)];
-  if(pcBase===undefined||pcDest===undefined) return null;
-  return ((pcDest-pcBase)%12+12)%12;
-}
+
+// 2) Formas MÓVILES de cejilla, dadas en el traste 1. baseRaiz = nota real en traste 1.
+//    Solo se usan si el acorde no tiene forma abierta arriba.
+const CEJILLA = {
+  '':     [['F',[1,1,2,3,3,1]],   ['A#',[1,3,3,3,1,'x']]],   // tipo E (raíz 6ª), tipo A (raíz 5ª)
+  'm':    [['F',[1,1,1,3,3,1]],   ['A#',[1,2,3,3,1,'x']]],
+  '7':    [['F',[1,1,2,1,3,1]],   ['A#',[1,3,1,3,1,'x']]],
+  'm7':   [['F',[1,1,1,1,3,1]],   ['A#',[1,2,1,3,1,'x']]],
+  'maj7': [['F',[1,1,2,2,3,1]],   ['A#',[1,3,2,3,1,'x']]],
+  '6':    [['F',['x',3,2,3,3,1]], ['A#',[3,3,3,3,1,'x']]],
+  'sus4': [['F',[1,1,3,3,3,1]],   ['A#',[1,4,3,3,1,'x']]],
+  '5':    'pw',
+  'dim':  [['D#',[1,0,1,0,'x','x']]],
+  'dim7': [['D#',[1,2,1,2,'x','x']]],
+  'm7b5': [['D#',[1,1,1,2,'x','x']]],
+  'aug':  [['F',[2,2,3,3,'x','x']]],
+  '7sus4':[['F',[1,1,3,1,3,1]]],
+};
+
 function digEstandar(a){
   if(!a || !a.r) return null;
-  // power chord: raíz en la 6ª cuerda
+  const raiz=normRaiz(a.r);
+  // power chord: raíz en la 6ª cuerda, quinta y octava
   if(a.q==='5'){
-    const t=((SEMI[normRaiz(a.r)]-SEMI['E'])%12+12)%12;
+    const t=((SEMI[raiz]-SEMI['E'])%12+12)%12;
     return ['x','x','x',t+2,t+2,t];
   }
-  const formas=FORMAS_BASE[a.q];
-  if(!formas || formas==='pw' || !Array.isArray(formas[0])) return null;
-  const opciones=[];
-  for(const [basePc,dig,movil] of formas){
-    const desp=desplazaForma(PC[basePc], a.r);
-    if(desp===null) continue;
-    if(!movil){
-      // forma abierta: solo sirve tal cual (desplazamiento 0)
-      if(desp===0) opciones.push({dig, altura:0, abierta:true});
-    }else{
-      const d=dig.map(v=>v==='x'?'x':v+desp);
-      const trastes=d.filter(v=>v!=='x');
-      if(trastes.every(v=>v<=15)) opciones.push({dig:d, altura:Math.min(...trastes.filter(v=>v>0), 99), abierta:false});
-    }
+  // 1) ¿hay forma abierta real para este acorde exacto?
+  const clave = raiz + a.q;
+  if(ABIERTOS[clave]) return ABIERTOS[clave].slice();
+  // 2) forma de cejilla más baja
+  const formas = CEJILLA[a.q];
+  if(!formas) return null;
+  let mejor=null, mejorAltura=99;
+  for(const [baseNota,dig] of formas){
+    const desp=((SEMI[raiz]-SEMI[baseNota])%12+12)%12 + 1;  // +1 porque la forma está en el traste 1
+    const d=dig.map(v=>v==='x'?'x':v+desp-1);
+    const trastes=d.filter(v=>v!=='x');
+    if(!trastes.length || Math.max(...trastes)>15) continue;
+    const altura=Math.min(...trastes.filter(v=>v>0).concat([99]));
+    if(altura<mejorAltura){ mejorAltura=altura; mejor=d; }
   }
-  if(!opciones.length) return null;
-  // preferir formas abiertas; si no, la de traste más bajo
-  opciones.sort((x,y)=> (x.abierta?0:1)-(y.abierta?0:1) || x.altura-y.altura);
-  return opciones[0].dig;
+  return mejor;
 }
 // asegura que un acorde lleve dig; si no lo tiene y no se lo pasan, lo calcula
 function conDigitacion(a, dig){
