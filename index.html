@@ -786,6 +786,13 @@ Se me va la vida, se me va..."></textarea>
       </div>
     </div>
     <div class="bloque">
+      <h4>Acordes</h4>
+      <p class="aviso">Recalcula el dibujo de todos los acordes a su forma estándar (la abierta cuando existe). Respeta las digitaciones que marcaste tú en el mástil.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn" id="btnRecalcularDig">Recalcular dibujos de acordes</button>
+      </div>
+    </div>
+    <div class="bloque">
       <h4>Espacio</h4>
       <p class="aviso" id="infoEspacio"></p>
     </div>
@@ -1836,8 +1843,8 @@ function sugerirBusca(){
   }
   $$('.opc',caja).forEach(b=>b.onclick=()=>{
     let a;
-    if(b.dataset.solo){ a={r:null,q:'',b:null,dig}; }             // sin nombre, solo dibujo
-    else{ const base=cand[+b.dataset.i]; a={r:base.r,q:base.q,b:base.b,dig}; }
+    if(b.dataset.solo){ a={r:null,q:'',b:null,dig,manual:true}; }             // sin nombre, solo dibujo
+    else{ const base=cand[+b.dataset.i]; a={r:base.r,q:base.q,b:base.b,dig,manual:true}; }
     // los sin-nombre siempre se pueden repetir; los con nombre no
     if(a.r && borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
     borrador.acordes.push(a); pintarElegidos();
@@ -2052,7 +2059,7 @@ function sugerirAcordeColumna(auto){
   $$('.opc',caja).forEach(b=>b.onclick=()=>{
     const a=cand[+b.dataset.i];
     const dig=CUERDAS.map((_,f)=>{ const v=tabRejilla[f][tabCursor]; return v===''?'x':+v; });
-    const conD={r:a.r,q:a.q,b:a.b,dig};
+    const conD={r:a.r,q:a.q,b:a.b,dig,manual:true};
     if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(conD))){ aviso('Ese acorde ya está en la lista.'); return; }
     borrador.acordes.push(conD); pintarElegidos();
     aviso(textoAcorde(a)+' añadido a la canción.');
@@ -2540,6 +2547,34 @@ function pintarAjustes(){
 $$('#hojaAjustes [data-notacion]').forEach(b=>b.onclick=()=>{
   estado.notacion=b.dataset.notacion; guardar(); refrescarNotacion(); pintarAjustes();
 });
+$('#btnRecalcularDig').onclick = ()=>{
+  // cuenta cuántos se cambiarían: los que tienen nombre y NO son manuales
+  let candidatos=0, manuales=0, sinForma=0;
+  estado.canciones.forEach(c=>(c.acordes||[]).forEach(a=>{
+    if(a.manual){ manuales++; return; }
+    if(!a.r) return;                       // sin nombre y sin marca manual: nada que recalcular
+    const nuevo=digEstandar(a);
+    if(!nuevo){ sinForma++; return; }
+    if(JSON.stringify(nuevo)!==JSON.stringify(a.dig||null)) candidatos++;
+  }));
+  if(!candidatos){
+    aviso(manuales ? 'Ya están todos al día (las digitaciones manuales se respetan).' : 'No hay nada que recalcular.');
+    return;
+  }
+  const msg = `Se van a recalcular ${candidatos} ${candidatos===1?'acorde':'acordes'} a su forma estándar.`+
+    (manuales?` Tus ${manuales} ${manuales===1?'digitación marcada a mano se mantiene':'digitaciones marcadas a mano se mantienen'}.`:'')+
+    '\n\n¿Seguir?';
+  if(!confirm(msg)) return;
+  let hechos=0;
+  estado.canciones.forEach(c=>(c.acordes||[]).forEach(a=>{
+    if(a.manual || !a.r) return;
+    const nuevo=digEstandar(a);
+    if(nuevo && JSON.stringify(nuevo)!==JSON.stringify(a.dig||null)){ a.dig=nuevo; hechos++; }
+  }));
+  guardar(); pintarRejilla();
+  if($('#hojaFicha').classList.contains('abierta') && fichaActual) abrirFicha(fichaActual.id);
+  aviso(`${hechos} ${hechos===1?'acorde actualizado':'acordes actualizados'} a su forma estándar.`);
+};
 $('#btnExportar').onclick = ()=>{
   const blob = new Blob([JSON.stringify(estado,null,2)],{type:'application/json'});
   const a = document.createElement('a');
