@@ -215,8 +215,10 @@ main{padding:16px var(--pad) 90px}
   margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--muted);font-weight:600;
 }
-.acs-grandes{display:flex;gap:7px;flex-wrap:wrap}
+.acs-grandes{display:flex;gap:9px;flex-wrap:wrap}
 .acs-grandes .ac{font-size:15px;padding:7px 11px;border-radius:8px;background:var(--surface)}
+.ac-ficha{cursor:pointer}
+.ac-ficha:active{border-color:var(--albero)}
 .notas{white-space:pre-wrap;font-size:14.5px;line-height:1.55;color:#e2d5c8;margin:0}
 
 /* ---------- compás / rasgueo ---------- */
@@ -267,10 +269,25 @@ main{padding:16px var(--pad) 90px}
 .pestanas{display:flex;gap:4px;margin:12px 0 2px;border-bottom:1px solid var(--line)}
 .pest{padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
 .pest[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--albero)}
-.elegidos{display:flex;gap:6px;flex-wrap:wrap;min-height:34px;align-items:center}
-.elegidos .ac{font-size:13px;padding:6px 8px;display:inline-flex;gap:6px;align-items:center}
-.elegidos .ac button{color:var(--muted);font-size:13px;line-height:1}
-.elegidos .ac button:hover{color:var(--granate)}
+.elegidos{display:flex;gap:8px;flex-wrap:wrap;min-height:34px;align-items:flex-start}
+.ac-carta{
+  position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:3px;
+  border:1px solid var(--line);border-radius:9px;padding:7px 8px 5px;background:var(--surface);
+  min-width:60px;
+}
+.ac-carta .dib{line-height:0}
+.ac-carta .dib svg{display:block}
+.ac-carta .sindib{font-size:9px;color:var(--muted);padding:18px 4px}
+.ac-carta .nom{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--albero)}
+.ac-carta .quita{
+  position:absolute;top:-7px;right:-7px;width:19px;height:19px;border-radius:50%;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
+  font-size:11px;line-height:1;z-index:2;
+}
+.ac-carta .quita:hover{color:var(--granate);border-color:var(--granate)}
+.dgm{width:56px;height:68px}
+.acorde-sugerido .opc-dib{flex-direction:column;padding:6px 8px;color:var(--albero)}
+.acorde-sugerido .opc-dib svg{margin-bottom:2px}
 .vacio-min{color:#6f5c50;font-size:13px}
 .pie-form{
   position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);
@@ -889,8 +906,133 @@ const CALIDADES = {
 const SIMBOLO = {'dim':'°','dim7':'°7','aug':'+','m7b5':'m7♭5','7b5':'7♭5','7b9':'7♭9','7#9':'7♯9','mMaj7':'m(maj7)'};
 
 const nombreRaiz = r => estado.notacion==='latina' ? (LATIN[r]||r) : r;
-const textoAcorde = a => nombreRaiz(a.r) + (SIMBOLO[a.q] ?? a.q) + (a.b ? '/'+nombreRaiz(a.b) : '');
+const textoAcorde = a => a.r ? (nombreRaiz(a.r) + (SIMBOLO[a.q] ?? a.q) + (a.b ? '/'+nombreRaiz(a.b) : '')) : '·';
 const idAcorde = a => a.r+'|'+a.q+'|'+(a.b||'');
+
+/* ---------- digitaciones ----------
+   dig = [1ª, 2ª, 3ª, 4ª, 5ª, 6ª]  (mi agudo → mi grave)
+   cada valor: número de traste, 0 = al aire, 'x' = no suena           */
+const AFIN=[64,59,55,50,45,40];   // midi de cada cuerda al aire, 1ª→6ª
+// Formas base. movil:true = se puede desplazar por el mástil (cejilla).
+// dig en orden [1ª,2ª,3ª,4ª,5ª,6ª] = mi agudo → mi grave.
+// Las formas móviles se dan como si estuvieran en el traste 1 (cejilla al 1).
+const FORMAS_BASE = {
+  '':     [[4,[0,0,1,2,2,0],false],   [9,[0,2,2,2,0,'x'],false], [2,[2,3,2,0,'x','x'],false], [0,[0,1,0,2,3,'x'],false],
+           [5,[1,1,2,3,3,1],true],    [10,[1,3,3,3,1,'x'],true]],   // cejilla tipo E (raíz 6ª) y tipo A (raíz 5ª)
+  'm':    [[4,[0,0,0,2,2,0],false],   [9,[0,1,2,2,0,'x'],false], [2,[1,3,2,0,'x','x'],false],
+           [5,[1,1,1,3,3,1],true],    [10,[1,2,3,3,1,'x'],true]],
+  '7':    [[4,[0,3,1,2,2,0],false],   [9,[0,2,0,2,0,'x'],false], [0,['x',1,3,2,3,'x'],false],
+           [5,[1,1,2,1,3,1],true],    [10,[1,3,1,3,1,'x'],true]],
+  'm7':   [[4,[0,3,0,2,2,0],false],   [9,[0,1,0,2,0,'x'],false], [2,[1,1,2,0,'x','x'],false],
+           [5,[1,1,1,1,3,1],true],    [10,[1,2,1,3,1,'x'],true]],
+  'maj7': [[0,[0,0,0,2,3,'x'],false], [9,[0,1,1,2,0,'x'],false], [4,[0,0,1,1,2,0],false],
+           [5,[1,1,2,2,3,1],true],    [10,[1,3,2,3,1,'x'],true]],
+  '6':    [[4,[2,2,1,2,2,0],false],   [0,[0,1,2,2,3,'x'],false], [9,[2,2,2,2,0,'x'],false]],
+  'm6':   [[9,[2,1,2,2,0,'x'],false], [4,[2,0,1,2,2,0],false]],
+  'sus2': [[2,[0,3,2,0,'x','x'],false], [9,[0,0,2,2,0,'x'],false], [0,[3,3,0,0,3,'x'],false]],
+  'sus4': [[4,[0,0,2,2,2,0],false],   [9,[0,3,2,2,0,'x'],false], [2,[3,3,2,0,'x','x'],false],
+           [5,[1,1,3,3,3,1],true]],
+  '5':    'pw',
+  'add9': [[0,[0,3,0,2,3,'x'],false], [4,[2,0,1,4,2,0],false]],
+  '9':    [[0,[3,3,3,2,3,'x'],false], [4,[2,0,0,0,2,0],false]],
+  'm9':   [[9,[0,1,0,1,0,'x'],false]],
+  'maj9': [[0,[0,0,0,4,3,'x'],false]],
+  'dim':  [[2,[1,0,1,0,'x','x'],true]],
+  'dim7': [[10,[1,2,1,2,'x','x'],true]],
+  'm7b5': [[10,[1,1,1,2,'x','x'],true]],
+  'aug':  [[0,[3,1,1,2,3,'x'],false]],
+  '7sus4':[[4,[0,3,2,2,2,0],false],   [9,[0,3,0,2,0,'x'],false]],
+};
+// distancia (en semitonos, hacia arriba) de una forma base a la tónica pedida
+function desplazaForma(baseRaiz, destinoRaiz){
+  const pcBase=SEMI[baseRaiz], pcDest=SEMI[normRaiz(destinoRaiz)];
+  if(pcBase===undefined||pcDest===undefined) return null;
+  return ((pcDest-pcBase)%12+12)%12;
+}
+function digEstandar(a){
+  if(!a || !a.r) return null;
+  // power chord: raíz en la 6ª cuerda
+  if(a.q==='5'){
+    const t=((SEMI[normRaiz(a.r)]-SEMI['E'])%12+12)%12;
+    return ['x','x','x',t+2,t+2,t];
+  }
+  const formas=FORMAS_BASE[a.q];
+  if(!formas || formas==='pw' || !Array.isArray(formas[0])) return null;
+  const opciones=[];
+  for(const [basePc,dig,movil] of formas){
+    const desp=desplazaForma(PC[basePc], a.r);
+    if(desp===null) continue;
+    if(!movil){
+      // forma abierta: solo sirve tal cual (desplazamiento 0)
+      if(desp===0) opciones.push({dig, altura:0, abierta:true});
+    }else{
+      const d=dig.map(v=>v==='x'?'x':v+desp);
+      const trastes=d.filter(v=>v!=='x');
+      if(trastes.every(v=>v<=15)) opciones.push({dig:d, altura:Math.min(...trastes.filter(v=>v>0), 99), abierta:false});
+    }
+  }
+  if(!opciones.length) return null;
+  // preferir formas abiertas; si no, la de traste más bajo
+  opciones.sort((x,y)=> (x.abierta?0:1)-(y.abierta?0:1) || x.altura-y.altura);
+  return opciones[0].dig;
+}
+// asegura que un acorde lleve dig; si no lo tiene y no se lo pasan, lo calcula
+function conDigitacion(a, dig){
+  const d = dig || a.dig || digEstandar(a);
+  return d ? {...a, dig:d} : {...a};
+}
+// nombre visible de un acorde sin nombre (solo dig)
+const SIN_NOMBRE='·';
+function etiquetaAcorde(a){
+  if(a.r) return textoAcorde(a);
+  return SIN_NOMBRE;
+}
+// las notas midi que suenan en una digitación, para poder escucharla
+function midisDeDig(dig){
+  if(!dig) return [];
+  const m=[];
+  dig.forEach((v,i)=>{ if(v!=='x'&&v!=null) m.push(AFIN[i]+ +v); });
+  return m;
+}
+// transporta una digitación n semitonos (mueve todos los trastes; 0 y al aire suben también)
+function transportarDig(dig, n){
+  if(!dig || !n) return dig;
+  // si algún traste bajaría por debajo de 0, no se puede: se deja igual
+  if(dig.some(v=>v!=='x' && v+ n < 0)) return dig;
+  return dig.map(v=>v==='x'?'x':v+n);
+}
+
+/* ---------- SVG de un diagrama de acorde (vertical) ---------- */
+function svgAcorde(dig, opc){
+  opc=opc||{};
+  if(!dig) return '';
+  const trastesUsados = dig.filter(v=>v!=='x'&&v>0);
+  const minT = trastesUsados.length ? Math.min(...trastesUsados) : 0;
+  const maxT = trastesUsados.length ? Math.max(...trastesUsados) : 0;
+  let base = (maxT<=4) ? 0 : (minT-1);
+  const nF = 4;
+  const W = opc.w||64, H = opc.h||78;
+  const padX=10, padTop=16, padBot=6;
+  const cuerdas=6, ancho=W-2*padX, alto=H-padTop-padBot;
+  const dx=ancho/(cuerdas-1), dy=alto/nF;
+  const col=opc.col||'#DBC9B7', acc=opc.acc||'#E9B23C', linea=opc.linea||'#5a4738';
+  const rPunto=Math.max(3.2, dx*0.32);
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="dgm">`;
+  if(base===0) s+=`<rect x="${padX-1}" y="${padTop-3}" width="${ancho+2}" height="3" rx="1" fill="${col}"/>`;
+  else s+=`<text x="${padX-4}" y="${padTop+dy-3}" font-size="8" fill="${col}" text-anchor="end" font-family="monospace">${base+1}</text>`;
+  for(let i=0;i<=nF;i++) s+=`<line x1="${padX}" y1="${padTop+i*dy}" x2="${padX+ancho}" y2="${padTop+i*dy}" stroke="${linea}" stroke-width="1"/>`;
+  for(let i=0;i<cuerdas;i++) s+=`<line x1="${padX+i*dx}" y1="${padTop}" x2="${padX+i*dx}" y2="${padTop+alto}" stroke="${linea}" stroke-width="1"/>`;
+  dig.forEach((v,idx)=>{
+    const x = padX + (cuerdas-1-idx)*dx;
+    if(v==='x'){ s+=`<text x="${x}" y="${padTop-5}" font-size="9" fill="${col}" text-anchor="middle" font-family="monospace">×</text>`; return; }
+    if(v===0){ s+=`<circle cx="${x}" cy="${padTop-7}" r="2.8" fill="none" stroke="${col}" stroke-width="1.2"/>`; return; }
+    const fila = v-base;
+    const y = padTop + (fila-0.5)*dy;
+    s+=`<circle cx="${x}" cy="${y}" r="${rPunto.toFixed(1)}" fill="${acc}"/>`;
+  });
+  s+='</svg>';
+  return s;
+}
 
 /* ---------- identificar un acorde a partir de sus notas ---------- */
 const PC=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -966,10 +1108,10 @@ function transportarRaiz(r,n){
   const t=((s+(n||0))%12+12)%12;
   return (en.includes('b')?BEM:SOS)[t];
 }
-const transportarAcorde=(a,n)=>({r:transportarRaiz(a.r,n), q:a.q, b:a.b?transportarRaiz(a.b,n):null});
+const transportarAcorde=(a,n)=>({r:a.r?transportarRaiz(a.r,n):null, q:a.q, b:a.b?transportarRaiz(a.b,n):null, dig:transportarDig(a.dig,n)});
 const desplazamiento=c=>(c.transporte||0)-(c.cejilla||0);
 const acordesDe=c=>(c.acordes||[]).map(a=>transportarAcorde(a, desplazamiento(c)));
-const tonalidadDe=c=>{const a=(c.acordes||[])[0]; return a?nombreRaiz(transportarRaiz(a.r,c.transporte||0)):'';};
+const tonalidadDe=c=>{const a=(c.acordes||[]).find(x=>x.r); return a?nombreRaiz(transportarRaiz(a.r,c.transporte||0)):'';};
 
 function transportarToken(tk,n){
   const m=tk.match(/^([([{]*)(.*?)([)\]},.;:]*)$/);
@@ -1159,7 +1301,7 @@ function cancionesVisibles(){
   let l = estado.canciones.slice();
   const q = filtro.texto.trim().toLowerCase();
   if(q) l = l.filter(c=>{
-    const acs = acordesDe(c).map(a=>textoAcorde(a)+' '+a.r+a.q).join(' ');
+    const acs = acordesDe(c).map(a=>textoAcorde(a)+' '+(a.r||'')+a.q).join(' ');
     const extra = tieneTab(c) ? ' tablatura tab' : '';
     return ((c.titulo||'')+' '+(c.artista||'')+' '+(c.tono||'')+' '+acs+extra).toLowerCase().includes(q);
   });
@@ -1187,7 +1329,7 @@ function pintarRejilla(){
   const lista = cancionesVisibles(), cont = $('#rejilla');
   cont.innerHTML = lista.map(c=>{
     const acs = acordesDe(c);
-    const chips = acs.slice(0,4).map(a=>`<span class="ac">${esc(textoAcorde(a))}</span>`).join('')
+    const chips = acs.slice(0,4).map(a=>`<span class="ac">${esc(etiquetaAcorde(a))}</span>`).join('')
       + (acs.length>4 ? `<span class="ac mas">+${acs.length-4}</span>` : '');
     const pat = c.patron && c.patron.c ? c.patron.c.map(v=>`<span>${GLIFO[v]}</span>`).join('') : '';
     return `<button class="card" data-id="${c.id}">
@@ -1232,7 +1374,12 @@ function abrirFicha(id){
   const c = estado.canciones.find(x=>x.id===id); if(!c) return;
   fichaActual = c;
   $('#fichaTitulo').textContent = c.titulo || 'Sin título';
-  const acs = acordesDe(c).map(a=>`<span class="ac">${esc(textoAcorde(a))}</span>`).join('');
+  const acs = acordesDe(c).map(a=>{
+    const dig=a.dig||digEstandar(a);
+    return `<span class="ac-carta ac-ficha">
+      <span class="dib">${dig?svgAcorde(dig,{w:60,h:74}):'<span class="sindib">sin dibujo</span>'}</span>
+      <span class="nom">${esc(etiquetaAcorde(a))}</span></span>`;
+  }).join('');
   const dias = c.ultimaVez ? Math.floor((Date.now()-c.ultimaVez)/86400000) : null;
   const cuandoTexto = dias===null ? 'nunca la has marcado' : dias===0 ? 'hoy' : dias===1 ? 'ayer' : `hace ${dias} días`;
   $('#fichaCuerpo').innerHTML = `
@@ -1286,6 +1433,16 @@ function abrirFicha(id){
     $('#fichaTonoMas').onclick=()=>{ c.transporte=(c.transporte||0)+1; guardar(); abrirFicha(c.id); pintarRejilla(); };
   }
   $('#fichaAñadirLista').onclick=()=>abrirListas({añadir:c.id});
+  const transp=acordesDe(c);
+  $$('#fichaCuerpo .ac-ficha').forEach((carta,i)=>{
+    carta.onclick=()=>{
+      const dig=transp[i]?.dig || digEstandar(transp[i]);
+      const midis=midisDeDig(dig);
+      if(!midis.length) return;
+      let ac; try{ ac=ctxAudio(); }catch(e){ return; }
+      midis.sort((x,y)=>y-x).forEach((m,k)=>sonarNota(m, ac.currentTime+0.02+k*0.05, 1.5));
+    };
+  });
   pintarGrabaciones(c);
   $('#fichaGrabar').onclick=()=>alternarGrabacion(c);
   if(c.patron){
@@ -1555,10 +1712,16 @@ function pintarPrevia(){
 }
 function pintarElegidos(){
   const c=$('#acordesElegidos');
-  c.innerHTML = borrador.acordes.length
-    ? borrador.acordes.map((a,i)=>`<span class="ac">${esc(textoAcorde(a))}<button data-i="${i}" aria-label="Quitar">✕</button></span>`).join('')
-    : '<span class="vacio-min">Sin acordes todavía</span>';
-  $$('button',c).forEach(b=>b.onclick=()=>{ borrador.acordes.splice(+b.dataset.i,1); pintarElegidos(); });
+  if(!borrador.acordes.length){ c.innerHTML='<span class="vacio-min">Sin acordes todavía</span>'; return; }
+  c.innerHTML = borrador.acordes.map((a,i)=>{
+    const dig = a.dig || digEstandar(a);
+    return `<span class="ac-carta">
+      <button class="quita" data-i="${i}" aria-label="Quitar">✕</button>
+      <span class="dib">${dig?svgAcorde(dig):'<span class="sindib">sin dibujo</span>'}</span>
+      <span class="nom">${esc(etiquetaAcorde(a))}</span>
+    </span>`;
+  }).join('');
+  $$('.quita',c).forEach(b=>b.onclick=()=>{ borrador.acordes.splice(+b.dataset.i,1); pintarElegidos(); });
 }
 function pintarPestanas(){
   const c=$('#pestQualities');
@@ -1580,7 +1743,7 @@ function pintarRaices(){
   }).join('');
   $$('.raiz',c).forEach(b=>b.onclick=()=>{
     const bajo = $('#fBajo').value || null;
-    const a = {r:b.dataset.r, q:calidadSel, b:bajo};
+    const a = conDigitacion({r:b.dataset.r, q:calidadSel, b:bajo});
     if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está.'); return; }
     borrador.acordes.push(a); pintarElegidos();
   });
@@ -1625,6 +1788,10 @@ function midisBusca(){
   buscaDig.forEach((t,f)=>{ if(t!==null) m.push(CUERDAS_MIDI[f]+t); });
   return m;
 }
+function digDeBusca(){
+  // buscaDig: [1ª..6ª] con traste o null. Convertir a dig con 'x' donde no suena.
+  return buscaDig.map(v=> v===null ? 'x' : v);
+}
 function sugerirBusca(){
   const caja=$('#buscaSugerido'), midis=midisBusca();
   const marcadas=midis.length;
@@ -1636,24 +1803,30 @@ function sugerirBusca(){
     $('#buscaNota').textContent='Marca en el mástil las cuerdas del acorde tal como lo ves.';
   }
   if(marcadas<2){ caja.classList.add('oculto'); return; }
+  const dig=digDeBusca();
   const cand=identificarAcorde(midis);
   caja.classList.remove('oculto');
   if(!cand.length){
-    caja.innerHTML='<div class="titu">Esas notas no me cuadran con ningún acorde conocido.</div>'+
-      '<div class="nada">Revisa las cuerdas, o añádelo a mano con las tónicas de arriba.</div>';
-    return;
+    caja.innerHTML='<div class="titu">No reconozco el nombre, pero puedo guardar su dibujo.</div>'+
+      '<div class="opciones"><button class="opc opc-dib" data-solo="1">'+
+        svgAcorde(dig,{w:52,h:64})+'<small>guardar solo el dibujo</small></button></div>';
+  }else{
+    caja.innerHTML='<div class="titu">Creo que es… (toca para añadirlo con su dibujo)</div>'+
+      '<div class="opciones">'+cand.map((a,i)=>{
+        const nom=Object.values(CALIDADES).flat().find(x=>x[0]===a.q);
+        return `<button class="opc" data-i="${i}">${esc(textoAcorde(a))}`+
+          (nom?`<small>${esc(nom[1])}</small>`:'')+'</button>';
+      }).join('')+
+      '<button class="opc opc-dib" data-solo="1"><small>solo el dibujo</small></button></div>';
   }
-  caja.innerHTML='<div class="titu">Creo que es… (toca para añadirlo a los acordes de la canción)</div>'+
-    '<div class="opciones">'+cand.map((a,i)=>{
-      const nom=Object.values(CALIDADES).flat().find(x=>x[0]===a.q);
-      return `<button class="opc" data-i="${i}">${esc(textoAcorde(a))}`+
-        (nom?`<small>${esc(nom[1])}</small>`:'')+'</button>';
-    }).join('')+'</div>';
   $$('.opc',caja).forEach(b=>b.onclick=()=>{
-    const a=cand[+b.dataset.i];
-    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
-    borrador.acordes.push({r:a.r,q:a.q,b:a.b}); pintarElegidos();
-    aviso(textoAcorde(a)+' añadido a la canción.');
+    let a;
+    if(b.dataset.solo){ a={r:null,q:'',b:null,dig}; }             // sin nombre, solo dibujo
+    else{ const base=cand[+b.dataset.i]; a={r:base.r,q:base.q,b:base.b,dig}; }
+    // los sin-nombre siempre se pueden repetir; los con nombre no
+    if(a.r && borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
+    borrador.acordes.push(a); pintarElegidos();
+    aviso((a.r?textoAcorde(a):'Acorde')+' añadido a la canción.');
   });
 }
 function reiniciarBusca(){
@@ -1863,8 +2036,10 @@ function sugerirAcordeColumna(auto){
     }).join('')+'</div>';
   $$('.opc',caja).forEach(b=>b.onclick=()=>{
     const a=cand[+b.dataset.i];
-    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ aviso('Ese acorde ya está en la lista.'); return; }
-    borrador.acordes.push({r:a.r,q:a.q,b:a.b}); pintarElegidos();
+    const dig=CUERDAS.map((_,f)=>{ const v=tabRejilla[f][tabCursor]; return v===''?'x':+v; });
+    const conD={r:a.r,q:a.q,b:a.b,dig};
+    if(borrador.acordes.some(x=>idAcorde(x)===idAcorde(conD))){ aviso('Ese acorde ya está en la lista.'); return; }
+    borrador.acordes.push(conD); pintarElegidos();
     aviso(textoAcorde(a)+' añadido a la canción.');
   });
 }
@@ -2115,7 +2290,7 @@ function abrirRepertorio(){
   const l=estado.canciones, n=l.length;
   const porEstado = k=>l.filter(c=>c.estado===k).length;
   const cuenta = {};
-  l.forEach(c=>(c.acordes||[]).forEach(a=>{ const k=idAcorde(a); cuenta[k]=(cuenta[k]||0)+1; }));
+  l.forEach(c=>(c.acordes||[]).forEach(a=>{ if(!a.r) return; const k=idAcorde(a); cuenta[k]=(cuenta[k]||0)+1; }));
   const top = Object.entries(cuenta).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const max = top.length?top[0][1]:1;
   const rasg = {};
@@ -2451,7 +2626,8 @@ async function procesarEntrada(){
       const d = JSON.parse(crudo);
       if(d && Array.isArray(d.canciones)){
         estado = {notacion:d.notacion||'latina', canciones:d.canciones, listas:Array.isArray(d.listas)?d.listas:[]};
-        estado.canciones.forEach(c=>{ c.letra=c.letra||''; c.transporte=c.transporte||0; c.grabaciones=c.grabaciones||[]; });
+        estado.canciones.forEach(c=>{ c.letra=c.letra||''; c.transporte=c.transporte||0; c.grabaciones=c.grabaciones||[];
+          (c.acordes||[]).forEach(a=>{ if(!a.dig && a.r) a.dig=digEstandar(a); }); });
       }
     }catch(e){}
   }
