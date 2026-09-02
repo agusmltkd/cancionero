@@ -532,6 +532,54 @@ main{padding:16px var(--pad) 90px}
 }
 .toast.ver{opacity:1;transform:translateX(-50%) translateY(-4px)}
 @media(max-width:640px){.toast{bottom:calc(96px + env(safe-area-inset-bottom))}}
+/* ---------- ensayo de cambios ---------- */
+.cambios{display:flex;gap:6px;flex-wrap:wrap}
+.cambio{
+  border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--surface);
+  font-family:var(--mono);font-size:12.5px;color:#dbc9b7;display:inline-flex;gap:7px;align-items:center;
+}
+.cambio small{font-family:var(--body);color:var(--muted);font-size:10.5px}
+.cambio[aria-pressed="true"]{border-color:var(--albero);color:var(--albero)}
+.loop{border:1px solid var(--line);border-radius:12px;background:#1b1410;padding:12px;margin-top:12px}
+.loop-cab{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.loop-dib{display:flex;gap:8px;align-items:center}
+.loop-dib .ac-carta{min-width:54px;transition:border-color .1s}
+.loop-dib .ac-carta.activo{border-color:var(--albero);box-shadow:0 0 0 1px var(--albero)}
+.loop-bpm{font-family:var(--mono);font-size:27px;font-weight:600;line-height:1;margin-left:auto;text-align:right}
+.loop-bpm span{display:block;font-size:10.5px;color:var(--muted);font-weight:400;font-family:var(--body);letter-spacing:.02em}
+.loop-pulsos{display:flex;gap:5px;margin:10px 0}
+.loop-pulsos i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line);display:block}
+.loop-pulsos i.on{background:var(--albero);border-color:var(--albero)}
+.loop-campos{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.loop-campos label{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.loop-campos input{
+  width:64px;background:var(--surface);border:1px solid var(--line);border-radius:8px;
+  padding:8px;font-family:var(--mono);font-size:14px;
+}
+@media(max-width:640px){.loop-campos input{font-size:16px}}
+
+/* ---------- hoja para imprimir ---------- */
+.hoja-papel{display:none}
+@media print{
+  body{background:#fff !important;color:#000;padding:0}
+  body > *{display:none !important}
+  body > .hoja-papel{display:block !important}
+  @page{size:A4;margin:14mm 12mm 16mm}
+  .hoja-papel h2{font-family:var(--disp);font-size:16pt;margin:0 0 1mm;color:#000}
+  .hoja-papel .sub{font-size:9pt;color:#444;margin:0 0 5mm}
+  .hoja-papel .cartas{display:flex;gap:5mm;flex-wrap:wrap;margin:0 0 6mm}
+  .hoja-papel .carta{text-align:center;font-family:var(--mono);font-size:8.5pt;color:#000}
+  .hoja-papel .grupo-print{break-inside:avoid;page-break-inside:avoid;margin-bottom:1.5mm}
+  .hoja-papel .l-ac,.hoja-papel .l-le,.hoja-papel .l-tab,.hoja-papel .l-sec{
+    font-family:var(--mono);font-size:9.5pt;line-height:1.36;white-space:pre-wrap;color:#000;
+  }
+  .hoja-papel .l-ac{font-weight:700}
+  .hoja-papel .l-sec{font-weight:700;margin-top:3mm}
+  .hoja-papel .tab-play{display:none}
+  .hoja-papel .tab-bloque{padding-left:0}
+  .hoja-papel .cancion{page-break-after:always}
+  .hoja-papel .cancion:last-child{page-break-after:auto}
+}
 .oculto{display:none !important}
 </style>
 </head>
@@ -589,6 +637,7 @@ main{padding:16px var(--pad) 90px}
       <h2 id="fichaTitulo">Canción</h2>
       <button class="btn cta" id="fichaTocar">▶ Tocar</button>
       <button class="btn ghost" id="fichaTocada">Tocada hoy</button>
+      <button class="btn ghost" id="fichaImprimir">Imprimir</button>
       <button class="btn ghost" id="fichaEditar">Editar</button>
       <button class="cerrar" data-cerrar aria-label="Cerrar">✕</button>
     </div>
@@ -699,6 +748,7 @@ main{padding:16px var(--pad) 90px}
 
     <div class="campo"><label for="fLetra">Letra con acordes</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="btnLaCuerda">Traer de lacuerda</button>
         <button class="btn" id="btnPegarLetra">Pegar y ordenar</button>
         <button class="btn ghost" id="btnOrdenarLetra">Ordenar lo pegado</button>
         <button class="btn ghost" id="btnAcordesLetra">Sacar acordes</button>
@@ -790,6 +840,13 @@ Se me va la vida, se me va..."></textarea>
       <p class="aviso">Recalcula el dibujo de todos los acordes a su forma estándar (la abierta cuando existe). Respeta las digitaciones que marcaste tú en el mástil.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn" id="btnRecalcularDig">Recalcular dibujos de acordes</button>
+      </div>
+    </div>
+    <div class="bloque">
+      <h4>Traer canciones de lacuerda</h4>
+      <p class="aviso">Dirección de tu Worker de Cloudflare. Hace falta porque lacuerda.net no manda las cabeceras que el navegador exige para leerla desde aquí.</p>
+      <div class="campo" style="margin-bottom:0">
+        <input id="fProxy" type="url" inputmode="url" placeholder="https://lacuerda.tu-subdominio.workers.dev">
       </div>
     </div>
     <div class="bloque">
@@ -1434,6 +1491,7 @@ function abrirFicha(id){
       <div class="compas" id="fichaCompas"></div>
       <div class="compas-pie"><button class="btn" id="fichaEscuchar">▶ Escuchar</button>
       <span>${c.patron.bpm||90} pulsaciones por minuto</span></div></div>`:''}
+    <div class="bloque" id="bloqueEnsayo"></div>
     ${c.letra?`<div class="bloque"><h4>Letra y acordes</h4>
       <div class="tocar-cuerpo" id="fichaLetra" style="max-height:340px;padding:0;font-size:13.5px"></div></div>`:''}
     ${c.notas?`<div class="bloque"><h4>Notas</h4><p class="notas">${esc(c.notas)}</p></div>`:''}
@@ -1447,6 +1505,7 @@ function abrirFicha(id){
     <div class="bloque"><button class="btn" id="fichaAñadirLista">Añadir a una lista</button></div>
   `;
   if(c.letra){ pintarLetra($('#fichaLetra'), c.letra, desplazamiento(c)); activarBloquesTab($('#fichaLetra'), c); }
+  if(typeof pintarEnsayo==='function') pintarEnsayo(c);
   if($('#fichaTonoValor')){
     const pinta=()=>{ const t=c.transporte||0;
       $('#fichaTonoValor').textContent = (t>0?'+':'')+t + (tonalidadDe(c)?' · '+tonalidadDe(c):''); };
@@ -2668,6 +2727,376 @@ async function procesarEntrada(){
   if(pista) $('#btnBuscarPortada').click();
   aviso('Canción montada desde lo compartido: revisa y guarda.');
 }
+
+/* ============================================================
+   Traer canciones de lacuerda.net
+   ------------------------------------------------------------
+   lacuerda.net no manda cabeceras CORS, así que el navegador no
+   deja pedirle la página desde aquí. El Worker de Cloudflare
+   (worker-lacuerda.js) hace de intermediario: su dirección se
+   guarda en Ajustes.
+   ============================================================ */
+const LC_CLAVE='cancionero:proxy-lacuerda';
+const LC_PROXY_DEFECTO='';   // si lo rellenas, no hace falta tocar Ajustes
+const proxyLC = () => (localStorage.getItem(LC_CLAVE) || LC_PROXY_DEFECTO || '').trim();
+
+const LC_URL_RE=/https?:\/\/(?:[\w-]+\.)*lacuerda\.net\/[^\s"'<>]+/i;
+const esUrlLaCuerda = t => LC_URL_RE.test(String(t||'').trim());
+const sacarUrlLaCuerda = t => (String(t||'').match(LC_URL_RE)||[null])[0];
+
+async function bajarLaCuerda(url){
+  const p=proxyLC();
+  if(!p){ const e=new Error('sin-proxy'); e.codigo='sin-proxy'; throw e; }
+  const r=await fetch(p.replace(/\/+$/,'')+'/?url='+encodeURIComponent(url));
+  if(!r.ok) throw new Error('El proxy ha respondido '+r.status);
+  return r.text();
+}
+
+/* Busca dentro de la página el trozo que más se parece a una canción, usando
+   el mismo esLineaAcordes que usa el resto de la app. Así no depende de cómo
+   esté maquetada la web y aguanta un rediseño. */
+function puntuarCancion(txt){
+  const lineas=String(txt||'').split('\n');
+  if(lineas.length<4) return -1;
+  return lineas.filter(esLineaAcordes).length*5 + Math.min(lineas.length,120)/10;
+}
+function extraerCancionHTML(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  doc.querySelectorAll('script,style,noscript').forEach(n=>n.remove());
+  let mejor='', punt=0;
+  for(const nodo of doc.querySelectorAll('pre, div, td, section, article')){
+    if(nodo.querySelector('pre, div, td, section, article')) continue;   // sólo hojas
+    const p=puntuarCancion(nodo.textContent||'');
+    if(p>punt){ punt=p; mejor=nodo.textContent||''; }
+  }
+  return {texto:mejor.replace(/\r\n?/g,'\n'), titulo:doc.title||''};
+}
+
+/* El título y el artista salen de la dirección, que es más estable que la
+   maquetación; el <title> sólo se usa para recuperar las tildes. */
+function metaDeUrlLaCuerda(url, tituloPagina){
+  const m=String(url).match(/lacuerda\.net\/(?:[a-z]+\/)?([^\/]+)\/([^\/?#]+)/i);
+  if(!m) return null;
+  const bonito = s => s.replace(/\.s?html?$/i,'').replace(/[_+-]+/g,' ')
+    .replace(/\s*\d+\s*$/,'').trim().replace(/\b[a-záéíóúñ]/g,c=>c.toUpperCase());
+  const meta={artista:bonito(m[1]), titulo:bonito(m[2])};
+  const plano = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  for(const p of String(tituloPagina||'').split(/\s+[-–|]\s+/).map(x=>x.trim()).filter(Boolean)){
+    if(plano(p)===plano(meta.titulo)) meta.titulo=p;
+    if(plano(p)===plano(meta.artista)) meta.artista=p;
+  }
+  return meta;
+}
+
+const LC_RESTOS=/^\s*(?:\+?\d+\s*(?:vistas|veces)|comparte|imprimir|reportar|colabora|publicidad|ver\s+comentarios?|[◄►«»]+)\s*$/i;
+const limpiarRestosWeb = txt => String(txt).split('\n').filter(l=>!LC_RESTOS.test(l)).join('\n');
+
+async function importarLaCuerda(url){
+  aviso('Bajando la canción…');
+  const {texto, titulo:tituloPagina}=extraerCancionHTML(await bajarLaCuerda(url));
+  if(puntuarCancion(texto)<=0) throw new Error('He bajado la página pero no encuentro la canción dentro.');
+
+  const meta=metaDeUrlLaCuerda(url,tituloPagina)||{};
+  const limpio=limpiarLetra(limpiarRestosWeb(texto));    // quita cejilla, basura y blancos de más
+
+  if(!$('#hojaEditor').classList.contains('abierta')) abrirEditor(null);
+  if(meta.titulo && !$('#fTitulo').value.trim()) $('#fTitulo').value=meta.titulo;
+  if(meta.artista && !$('#fArtista').value.trim()) $('#fArtista').value=meta.artista;
+  $('#fLetra').value=limpio.texto;
+  if(!$('#fEnlace').value.trim()) $('#fEnlace').value=url;
+  if(limpio.capo!=null && limpio.capo<=12) $('#fCejilla').value=String(limpio.capo);
+
+  let nuevos=0;
+  for(const a of extraerAcordesDeLetra(limpio.texto)){
+    if(!borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ borrador.acordes.push(conDigitacion(a)); nuevos++; }
+  }
+  pintarElegidos(); pintarPrevia();
+  if(meta.titulo && !borrador.portada) $('#btnBuscarPortada').click();
+
+  aviso('Canción traída'+(nuevos?` · ${nuevos} ${nuevos===1?'acorde':'acordes'}`:'')+
+    (limpio.capo!=null?` · cejilla ${limpio.capo}`:'')+' · revisa y guarda');
+}
+
+function fallaLaCuerda(err,url){
+  if(err && err.codigo==='sin-proxy'){
+    aviso('Falta poner la dirección del proxy en Ajustes.');
+    if(url) window.open(url,'_blank','noopener');
+    return;
+  }
+  aviso(err && err.message ? err.message : 'No he podido traer esa canción.');
+}
+
+async function pedirUrlLaCuerda(){
+  const enLetra=$('#fLetra').value.trim();
+  if(esUrlLaCuerda(enLetra) && enLetra.split(/\s/).length===1) return sacarUrlLaCuerda(enLetra);
+  try{
+    const u=sacarUrlLaCuerda(await navigator.clipboard.readText());
+    if(u) return u;
+  }catch(e){}
+  return sacarUrlLaCuerda(prompt('Pega la dirección de la canción en lacuerda.net','')||'');
+}
+$('#btnLaCuerda').onclick = async ()=>{
+  const url=await pedirUrlLaCuerda();
+  if(!url){ aviso('Necesito una dirección de lacuerda.net.'); return; }
+  try{ await importarLaCuerda(url); }catch(e){ fallaLaCuerda(e,url); }
+};
+$('#fProxy').value = localStorage.getItem(LC_CLAVE)||'';
+$('#fProxy').onchange = e=>{
+  const v=e.target.value.trim();
+  if(v) localStorage.setItem(LC_CLAVE, v.replace(/\/+$/,'')); else localStorage.removeItem(LC_CLAVE);
+  aviso(v?'Proxy guardado.':'Proxy quitado.');
+};
+
+/* Sustituye a la entrada de fuera para admitir también un enlace: compartir
+   la página de lacuerda al Cancionero monta la canción sola. */
+procesarEntrada = async function(){
+  let texto=null;
+  const params=new URLSearchParams(location.search);
+  if(location.hash.startsWith('#letra=')){
+    try{ texto=decodeURIComponent(location.hash.slice(7)); }catch(e){ texto=null; }
+    history.replaceState(null,'',location.pathname+location.search);
+  }else if(params.has('lc')){
+    texto=params.get('lc');
+    history.replaceState(null,'',location.pathname);
+  }else if(params.has('pegar')){
+    history.replaceState(null,'',location.pathname);
+    try{ texto=await navigator.clipboard.readText(); }
+    catch(e){ aviso('No he podido leer el portapapeles: abre una canción nueva y pulsa «Pegar y ordenar».'); return; }
+  }
+  if(!texto || !texto.trim()) return;
+
+  const url=sacarUrlLaCuerda(texto);
+  if(url && texto.trim().split(/\s/).length===1){
+    try{ await importarLaCuerda(url); }catch(e){ fallaLaCuerda(e,url); }
+    return;
+  }
+
+  abrirEditor(null);
+  const pista=adivinarTituloArtista(texto);
+  if(pista){
+    $('#fTitulo').value=pista.titulo;
+    $('#fArtista').value=pista.artista;
+    texto=texto.replace(pista.linea,'');
+  }
+  const r=limpiarLetra(texto);
+  $('#fLetra').value=r.texto;
+  if(r.capo!=null && r.capo<=12) $('#fCejilla').value=String(r.capo);
+  extraerAcordesDeLetra(r.texto).forEach(a=>borrador.acordes.push(conDigitacion(a)));
+  pintarElegidos(); pintarPrevia();
+  if(pista) $('#btnBuscarPortada').click();
+  aviso('Canción montada desde lo compartido: revisa y guarda.');
+};
+
+/* ============================================================
+   Ensayo: los cambios que se atragantan
+   ------------------------------------------------------------
+   Saca de la letra los cambios de acorde ordenados por lo que se
+   repiten, y los machaca en bucle subiendo el tempo solo.
+   ============================================================ */
+function acordesEnOrden(c){
+  const out=[];
+  for(const linea of String(c.letra||'').split('\n')){
+    if(!esLineaAcordes(linea)) continue;
+    for(const tk of linea.trim().split(/\s+/)){
+      const m=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'').match(ACORDE_RE);
+      if(!m) continue;
+      const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
+               b:m[3]&&!/^\d+$/.test(m[3])?normRaiz(m[3]):null};
+      if(SEMI[a.r]!==undefined) out.push(a);
+    }
+  }
+  return out.length ? out : (c.acordes||[]).filter(a=>a.r).map(a=>({r:a.r,q:a.q,b:a.b||null}));
+}
+function transicionesDe(c){
+  const seq=acordesEnOrden(c), cuenta=new Map();
+  for(let i=1;i<seq.length;i++){
+    const a=seq[i-1], b=seq[i];
+    if(idAcorde(a)===idAcorde(b)) continue;
+    const k=idAcorde(a)+'>'+idAcorde(b);
+    const e=cuenta.get(k)||{a,b,veces:0};
+    e.veces++; cuenta.set(k,e);
+  }
+  return [...cuenta.values()].sort((x,y)=>y.veces-x.veces);
+}
+
+let loop=null;
+function pararLoop(){
+  if(!loop) return;
+  clearTimeout(loop.timer);
+  try{ loop.ctx.close(); }catch(e){}
+  const bt=$('#loopArrancar');
+  if(bt) bt.textContent='▶ Empezar';
+  $$('#bloqueEnsayo .loop-pulsos i').forEach(i=>i.classList.remove('on'));
+  loop=null;
+}
+function clicLoop(ctx,t,acento){
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.frequency.value=acento?1550:900;
+  g.gain.setValueAtTime(acento?.45:.24,t);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.05);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t+.07);
+}
+function acordeLoop(ctx,midis,t){
+  midis.slice().sort((a,b)=>b-a).forEach((m,i)=>{
+    const fr=440*Math.pow(2,(m-69)/12), c=t+i*.022;
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='triangle'; o.frequency.value=fr;
+    g.gain.setValueAtTime(.0001,c);
+    g.gain.exponentialRampToValueAtTime(.13,c+.008);
+    g.gain.exponentialRampToValueAtTime(.0001,c+1.1);
+    o.connect(g).connect(ctx.destination);
+    o.start(c); o.stop(c+1.2);
+  });
+}
+function arrancarLoop(par){
+  pararLoop();
+  const ini=Math.max(30,+$('#loopIni').value||55);
+  const fin=Math.max(ini,+$('#loopFin').value||95);
+  const paso=Math.max(1,+$('#loopPaso').value||5);
+  const reps=Math.max(1,+$('#loopReps').value||4);
+  const pulsos=4, compases=2;
+  let ctx;
+  try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }
+  catch(e){ aviso('Este navegador no deja sonar.'); return; }
+
+  let sig=ctx.currentTime+.2, pulso=0, compas=0, rep=0, bpm=ini, fin_=false;
+  loop={ctx, timer:null};
+  $('#loopArrancar').textContent='■ Parar';
+
+  const planificar=()=>{
+    if(!loop) return;
+    while(!fin_ && sig < ctx.currentTime+.12){
+      clicLoop(ctx,sig,pulso===0);
+      if(pulso===0 && par.sonar) acordeLoop(ctx, compas===0?par.midisA:par.midisB, sig);
+      const t=sig, p=pulso, cp=compas, b=bpm;
+      setTimeout(()=>{
+        if(!loop) return;
+        $$('#bloqueEnsayo .loop-pulsos i').forEach((el,k)=>el.classList.toggle('on',k===p));
+        $$('#bloqueEnsayo .loop-dib .ac-carta').forEach((el,k)=>el.classList.toggle('activo',k===cp));
+        $('#loopBpm').innerHTML=b+'<span>por minuto</span>';
+      }, Math.max(0,(t-ctx.currentTime)*1000));
+
+      sig += 60/bpm;
+      if(++pulso<pulsos) continue;
+      pulso=0;
+      if(++compas<compases) continue;
+      compas=0;
+      if(++rep<reps) continue;
+      rep=0;
+      if(bpm>=fin){ fin_=true; break; }
+      bpm=Math.min(bpm+paso,fin);
+    }
+    if(fin_){
+      const espera=(sig-ctx.currentTime)*1000+300;
+      loop.timer=setTimeout(()=>{ pararLoop(); aviso(`Llegaste a ${fin} pulsaciones por minuto.`); }, Math.max(0,espera));
+      return;
+    }
+    loop.timer=setTimeout(planificar,25);
+  };
+  planificar();
+}
+
+function pintarEnsayo(c){
+  const cont=$('#bloqueEnsayo');
+  if(!cont) return;
+  const n=desplazamiento(c);
+  const lista=transicionesDe(c).slice(0,8).map(t=>({
+    a:transportarAcorde(conDigitacion(t.a),n),
+    b:transportarAcorde(conDigitacion(t.b),n),
+    veces:t.veces
+  }));
+  if(!lista.length){ cont.style.display='none'; return; }
+  cont.style.display='';
+  cont.innerHTML=`<h4>Cambios que más se repiten</h4>
+    <div class="cambios">${lista.map((t,i)=>
+      `<button class="cambio" data-i="${i}" aria-pressed="false">${esc(textoAcorde(t.a))} → ${esc(textoAcorde(t.b))}<small>${t.veces}×</small></button>`
+    ).join('')}</div>
+    <p class="aviso">Elige el que se te atraganta: dos compases en bucle, subiendo el tempo solo cuando te salen limpios.</p>
+    <div id="loopPanel"></div>`;
+
+  $$('.cambio',cont).forEach(b=>b.onclick=()=>{
+    $$('.cambio',cont).forEach(x=>x.setAttribute('aria-pressed', x===b));
+    abrirLoop(lista[+b.dataset.i], c);
+  });
+}
+
+function abrirLoop(t,c){
+  pararLoop();
+  const bpmBase=(c.patron&&c.patron.bpm)||90;
+  const digA=t.a.dig||digEstandar(t.a), digB=t.b.dig||digEstandar(t.b);
+  const cej=c.cejilla||0;
+  const par={
+    midisA:midisDeDig(digA).map(m=>m+cej),
+    midisB:midisDeDig(digB).map(m=>m+cej),
+    sonar:true
+  };
+  $('#loopPanel').innerHTML=`<div class="loop">
+    <div class="loop-cab">
+      <div class="loop-dib">
+        <span class="ac-carta"><span class="dib">${digA?svgAcorde(digA,{w:54,h:66}):''}</span><span class="nom">${esc(etiquetaAcorde(t.a))}</span></span>
+        <span class="ac-carta"><span class="dib">${digB?svgAcorde(digB,{w:54,h:66}):''}</span><span class="nom">${esc(etiquetaAcorde(t.b))}</span></span>
+      </div>
+      <div class="loop-bpm" id="loopBpm">—<span>por minuto</span></div>
+    </div>
+    <div class="loop-pulsos">${'<i></i>'.repeat(4)}</div>
+    <div class="loop-campos">
+      <span><label for="loopIni">Desde</label><br><input id="loopIni" type="number" min="30" max="240" value="${Math.max(40,Math.round(bpmBase*0.6))}"></span>
+      <span><label for="loopFin">Hasta</label><br><input id="loopFin" type="number" min="30" max="240" value="${bpmBase}"></span>
+      <span><label for="loopPaso">Sube</label><br><input id="loopPaso" type="number" min="1" max="20" value="5"></span>
+      <span><label for="loopReps">Vueltas</label><br><input id="loopReps" type="number" min="1" max="16" value="4"></span>
+    </div>
+    <div class="compas-pie">
+      <button class="btn cta" id="loopArrancar">▶ Empezar</button>
+      <button class="btn ghost" id="loopSonido" aria-pressed="true">Con acordes</button>
+      <span>compás de 4, dos compases por vuelta</span>
+    </div>
+  </div>`;
+  $('#loopArrancar').onclick=()=>{ if(loop) pararLoop(); else arrancarLoop(par); };
+  $('#loopSonido').onclick=e=>{
+    par.sonar=!par.sonar;
+    e.currentTarget.setAttribute('aria-pressed',par.sonar);
+    e.currentTarget.textContent=par.sonar?'Con acordes':'Sólo clic';
+  };
+  $('#loopPanel').scrollIntoView({block:'nearest'});
+}
+
+/* ============================================================
+   Imprimir para el cuaderno de papel
+   ============================================================ */
+function imprimirCancion(c){
+  let hoja=$('.hoja-papel');
+  if(!hoja){ hoja=document.createElement('div'); hoja.className='hoja-papel'; document.body.appendChild(hoja); }
+  const n=desplazamiento(c);
+  const cartas=acordesDe(c).map(a=>{
+    const d=a.dig||digEstandar(a);
+    return `<div class="carta">${d?svgAcorde(d,{w:50,h:62,col:'#000',acc:'#000',linea:'#9a9a9a'}):''}
+      <div>${esc(etiquetaAcorde(a))}</div></div>`;
+  }).join('');
+
+  // La letra se pinta con el mismo motor de la app y luego se agrupa por
+  // secciones, para que no se parta una estrofa entre dos páginas.
+  const tmp=document.createElement('div');
+  if(c.letra) pintarLetra(tmp,c.letra,n);
+  let cuerpo='', grupo='';
+  for(const nodo of [...tmp.children]){
+    if(nodo.classList.contains('l-sec') && grupo){ cuerpo+=`<div class="grupo-print">${grupo}</div>`; grupo=''; }
+    grupo+=nodo.outerHTML;
+  }
+  if(grupo) cuerpo+=`<div class="grupo-print">${grupo}</div>`;
+
+  const sub=[c.artista, c.cejilla?`cejilla ${c.cejilla}`:'', tonalidadDe(c)?`suena en ${tonalidadDe(c)}`:'',
+    c.patron&&c.patron.n?c.patron.n:''].filter(Boolean).join(' · ');
+  hoja.innerHTML=`<section class="cancion">
+    <h2>${esc(c.titulo||'Sin título')}</h2>
+    <p class="sub">${esc(sub)}</p>
+    ${cartas?`<div class="cartas">${cartas}</div>`:''}
+    ${cuerpo||'<p class="sub">Esta canción no tiene letra guardada.</p>'}
+  </section>`;
+  window.print();
+}
+$('#fichaImprimir').onclick=()=>{ if(fichaActual) imprimirCancion(fichaActual); };
+
 
 (async function arrancar(){
   const crudo = await Almacen.leer();
