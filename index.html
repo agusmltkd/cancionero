@@ -2760,16 +2760,53 @@ function puntuarCancion(txt){
   if(lineas.length<4) return -1;
   return lineas.filter(esLineaAcordes).length*5 + Math.min(lineas.length,120)/10;
 }
-function extraerCancionHTML(html){
+/* textContent no ve los <br>: si la web maqueta con saltos en vez de con <pre>,
+   la canción entera llega en una sola línea. Y los &nbsp; con los que se alinean
+   los acordes hay que pasarlos a espacio normal o se descuadran las columnas. */
+function textoDeNodo(nodo){
+  const c=nodo.cloneNode(true);
+  c.querySelectorAll('br').forEach(b=>b.replaceWith('\n'));
+  c.querySelectorAll('p,div,tr,li,h1,h2,h3,h4').forEach(b=>b.append('\n'));
+  return (c.textContent||'').replace(/\r\n?/g,'\n').replace(/[\u00a0\u2007\u202f]/g,' ');
+}
+function candidatosCancion(html){
   const doc=new DOMParser().parseFromString(html,'text/html');
-  doc.querySelectorAll('script,style,noscript').forEach(n=>n.remove());
-  let mejor='', punt=0;
-  for(const nodo of doc.querySelectorAll('pre, div, td, section, article')){
-    if(nodo.querySelector('pre, div, td, section, article')) continue;   // sólo hojas
-    const p=puntuarCancion(nodo.textContent||'');
-    if(p>punt){ punt=p; mejor=nodo.textContent||''; }
+  doc.querySelectorAll('script,style,noscript,nav,header,footer,form,select').forEach(n=>n.remove());
+  const lista=[];
+  for(const nodo of doc.querySelectorAll('pre,code,td,div,section,article,body')){
+    const t=textoDeNodo(nodo);
+    const p=puntuarCancion(t);
+    if(p>0) lista.push({nodo,texto:t,punt:p});
   }
-  return {texto:mejor.replace(/\r\n?/g,'\n'), titulo:doc.title||''};
+  // Nos quedamos con el más ajustado: entre los que puntúan casi igual de alto,
+  // el de menos texto, que es el que trae la canción sin el resto de la página.
+  const techo=lista.reduce((m,x)=>Math.max(m,x.punt),0);
+  lista.sort((a,b)=>(b.punt-a.punt)||(a.texto.length-b.texto.length));
+  const finos=lista.filter(x=>x.punt>=techo*0.9).sort((a,b)=>a.texto.length-b.texto.length);
+  return {doc, lista, elegido:finos[0]||null};
+}
+function extraerCancionHTML(html){
+  const {doc, elegido}=candidatosCancion(html);
+  return {texto:elegido?elegido.texto:'', titulo:doc.title||''};
+}
+
+/* Diagnóstico: dice qué ha bajado y de qué etiqueta lo ha sacado, sin volcar
+   la canción. Llámalo desde la consola: lcDebug('https://…') */
+async function lcDebug(url){
+  const html=await bajarLaCuerda(url);
+  const {lista, elegido}=candidatosCancion(html);
+  console.log('bytes bajados:', html.length, '· candidatos:', lista.length);
+  console.table(lista.slice(0,8).map(x=>({
+    etiqueta:x.nodo.tagName, id:x.nodo.id||'', clase:(x.nodo.className||'').toString().slice(0,24),
+    puntos:Math.round(x.punt), lineas:x.texto.split('\n').length,
+    lineasAcordes:x.texto.split('\n').filter(esLineaAcordes).length, caracteres:x.texto.length
+  })));
+  if(!lista.length){
+    const suelto=html.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ');
+    console.log('ningún nodo puntúa. ¿Hay etiquetas <pre>?:', /<pre/i.test(html),
+                '· ¿hay <br>?:', /<br/i.test(html), '· texto plano:', suelto.length, 'caracteres');
+  }
+  return elegido ? {etiqueta:elegido.nodo.tagName, id:elegido.nodo.id, lineas:elegido.texto.split('\n').length} : null;
 }
 
 /* El título y el artista salen de la dirección, que es más estable que la
@@ -2793,8 +2830,20 @@ const limpiarRestosWeb = txt => String(txt).split('\n').filter(l=>!LC_RESTOS.tes
 
 async function importarLaCuerda(url){
   aviso('Bajando la canción…');
-  const {texto, titulo:tituloPagina}=extraerCancionHTML(await bajarLaCuerda(url));
-  if(puntuarCancion(texto)<=0) throw new Error('He bajado la página pero no encuentro la canción dentro.');
+  const html=await bajarLaCuerda(url);
+  let {texto, titulo:tituloPagina}=extraerCancionHTML(html);
+  let aOjo=false;
+
+  // Si no reconoce ningún bloque, no nos rendimos: se vuelca la página en
+  // texto plano para que la recortes a mano en vez de quedarte sin nada.
+  if(puntuarCancion(texto)<=0){
+    if(!html || html.length<200) throw new Error('El proxy no ha devuelto nada. Revisa su dirección en Ajustes.');
+    texto=html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi,'')
+              .replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|tr|li)>/gi,'\n')
+              .replace(/<[^>]+>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&')
+              .replace(/[\u00a0\u2007\u202f]/g,' ');
+    aOjo=true;
+  }
 
   const meta=metaDeUrlLaCuerda(url,tituloPagina)||{};
   const limpio=limpiarLetra(limpiarRestosWeb(texto));    // quita cejilla, basura y blancos de más
@@ -2813,8 +2862,10 @@ async function importarLaCuerda(url){
   pintarElegidos(); pintarPrevia();
   if(meta.titulo && !borrador.portada) $('#btnBuscarPortada').click();
 
-  aviso('Canción traída'+(nuevos?` · ${nuevos} ${nuevos===1?'acorde':'acordes'}`:'')+
-    (limpio.capo!=null?` · cejilla ${limpio.capo}`:'')+' · revisa y guarda');
+  aviso(aOjo
+    ? 'No he reconocido el bloque de la canción: te he volcado la página entera, recorta lo que sobre.'
+    : 'Canción traída'+(nuevos?` · ${nuevos} ${nuevos===1?'acorde':'acordes'}`:'')+
+      (limpio.capo!=null?` · cejilla ${limpio.capo}`:'')+' · revisa y guarda');
 }
 
 function fallaLaCuerda(err,url){
