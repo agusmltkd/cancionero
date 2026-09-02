@@ -558,6 +558,24 @@ main{padding:16px var(--pad) 90px}
 }
 @media(max-width:640px){.loop-campos input{font-size:16px}}
 
+/* ---------- acordes marcados dentro de la letra ---------- */
+.l-ac .ac-inline{
+  background:#3a2a14;color:var(--albero);font-weight:600;
+  border-radius:4px;padding:1px 3px;margin:0 -3px;   /* el margen anula el padding: la alineación no se mueve */
+  cursor:pointer;
+}
+.l-ac .ac-inline:active,.l-ac .ac-inline.tocado{background:var(--albero);color:#16110E}
+.globo{
+  position:fixed;z-index:90;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:var(--surface-2);border:1px solid var(--albero);border-radius:12px;
+  padding:9px 10px 7px;box-shadow:0 14px 32px rgba(0,0,0,.6);
+  animation:asoma .13s ease-out;
+}
+@keyframes asoma{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.globo .nom{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--albero)}
+.globo .pie{font-size:10px;color:var(--muted)}
+.globo .sindib{font-size:10px;color:var(--muted);padding:22px 10px;text-align:center}
+
 /* ---------- hoja para imprimir ---------- */
 .hoja-papel{display:none}
 @media print{
@@ -574,6 +592,7 @@ main{padding:16px var(--pad) 90px}
     font-family:var(--mono);font-size:9.5pt;line-height:1.36;white-space:pre-wrap;color:#000;
   }
   .hoja-papel .l-ac{font-weight:700}
+  .hoja-papel .l-ac .ac-inline{background:none;color:#000;padding:0;margin:0}
   .hoja-papel .l-sec{font-weight:700;margin-top:3mm}
   .hoja-papel .tab-play{display:none}
   .hoja-papel .tab-bloque{padding-left:0}
@@ -889,6 +908,7 @@ Se me va la vida, se me va..."></textarea>
   </div>
 </div>
 
+<div class="globo oculto" id="globoAcorde"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1258,6 +1278,19 @@ function transportarTab(linea,n){
 }
 const tieneTab = c => String(c.letra||'').split('\n').some(esLineaTab);
 
+/* Marca cada acorde por separado dentro de una línea de acordes. El padding se
+   compensa con margen negativo: si no, cambiaría el ancho y los acordes dejarían
+   de caer encima de su sílaba. */
+function resaltarAcordes(linea){
+  return String(linea).split(/(\s+)/).map(p=>{
+    if(!p) return '';
+    if(/^\s+$/.test(p)) return esc(p);
+    const limpio=p.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+    if(!limpio || NO_ACORDE.test(limpio) || !ACORDE_RE.test(limpio)) return esc(p);
+    return `<span class="ac-inline" data-ac="${esc(limpio)}">${esc(p)}</span>`;
+  }).join('');
+}
+
 function pintarLetra(cont, texto, n){
   const lineas=String(texto||'').split('\n');
   let html='', bloque=[], nBloque=0;
@@ -1272,7 +1305,7 @@ function pintarLetra(cont, texto, n){
     if(esLineaTab(l)){ bloque.push(transportarTab(l,n)); continue; }
     cerrar();
     if(/^\s*[[(].{1,28}[\])]\s*$/.test(l) && !esLineaAcordes(l)) html += `<div class="l-sec">${esc(l)}</div>`;
-    else if(esLineaAcordes(l)) html += `<div class="l-ac">${esc(transportarLinea(l,n))}</div>`;
+    else if(esLineaAcordes(l)) html += `<div class="l-ac">${resaltarAcordes(transportarLinea(l,n))}</div>`;
     else html += `<div class="l-le">${l.trim()?esc(l):'&nbsp;'}</div>`;
   }
   cerrar();
@@ -1452,6 +1485,7 @@ let fichaActual = null;
 function abrirFicha(id){
   const c = estado.canciones.find(x=>x.id===id); if(!c) return;
   fichaActual = c;
+  if(typeof sincronizarAcordes==='function') sincronizarAcordes(c);
   $('#fichaTitulo').textContent = c.titulo || 'Sin título';
   const acs = acordesDe(c).map(a=>{
     const dig=a.dig||digEstandar(a);
@@ -1504,7 +1538,7 @@ function abrirFicha(id){
     </div>
     <div class="bloque"><button class="btn" id="fichaAñadirLista">Añadir a una lista</button></div>
   `;
-  if(c.letra){ pintarLetra($('#fichaLetra'), c.letra, desplazamiento(c)); activarBloquesTab($('#fichaLetra'), c); }
+  if(c.letra){ pintarLetra($('#fichaLetra'), c.letra, desplazamiento(c)); activarBloquesTab($('#fichaLetra'), c); activarAcordesLetra($('#fichaLetra')); }
   if(typeof pintarEnsayo==='function') pintarEnsayo(c);
   if($('#fichaTonoValor')){
     const pinta=()=>{ const t=c.transporte||0;
@@ -2426,6 +2460,7 @@ function pintarTocar(){
   const c = estado.canciones.find(x=>x.id===cola[posCola]);
   if(!c){ cerrarTocar(); return; }
   cancionTocando = c;
+  if(typeof cerrarGlobo==='function') cerrarGlobo();
   $('#tocarTitulo').textContent = c.titulo || 'Sin título';
   const desp = desplazamiento(c);
   const tabAtascada = desp<0 && String(c.letra||'').split('\n').some(l=>
@@ -2440,7 +2475,7 @@ function pintarTocar(){
   const cuerpo = $('#tocarCuerpo');
   cuerpo.style.fontSize = tamLetra+'px';
   ajustarTab(cuerpo, c);
-  if(c.letra){ pintarLetra(cuerpo, c.letra, desplazamiento(c)); activarBloquesTab(cuerpo, c); }
+  if(c.letra){ pintarLetra(cuerpo, c.letra, desplazamiento(c)); activarBloquesTab(cuerpo, c); activarAcordesLetra(cuerpo); }
   else cuerpo.innerHTML = `<div class="l-ac">${esc(acordesDe(c).map(a=>textoAcorde(a)).join('   '))}</div>`+
     `<div class="tocar-vacio">Esta canción no tiene letra guardada. Edítala y pega la letra con los acordes en la línea de encima para verla aquí.</div>`;
   cuerpo.scrollTop = 0;
@@ -2456,6 +2491,7 @@ function ajustarTab(cont, c){
 }
 function cerrarTocar(){
   if(scrollActivo) alternarScroll();
+  cerrarGlobo();
   $('#modoTocar').classList.remove('abierto');
   const c = cancionTocando;
   cancionTocando = null;
@@ -2476,6 +2512,7 @@ function pasoScroll(t){
   const dt = Math.min(0.1,(t-ultimoT)/1000); ultimoT=t;
   const cu=$('#tocarCuerpo');
   cu.scrollTop += velScroll*dt;
+  if(globoSpan) colocarGlobo();
   if(cu.scrollTop + cu.clientHeight >= cu.scrollHeight-1){ alternarScroll(); return; }
   rafId = requestAnimationFrame(pasoScroll);
 }
@@ -3125,14 +3162,20 @@ function imprimirCancion(c){
       <div>${esc(etiquetaAcorde(a))}</div></div>`;
   }).join('');
 
-  // La letra se pinta con el mismo motor de la app y luego se agrupa por
-  // secciones, para que no se parta una estrofa entre dos páginas.
+  // La letra se pinta con el mismo motor de la app y luego se agrupa en trozos
+  // que quepan: corta en cada sección y en cada línea en blanco, para que no se
+  // parta una estrofa entre dos páginas. Sin el corte por blancos, una canción
+  // sin secciones marcadas saldría como un bloque único imposible de repartir.
   const tmp=document.createElement('div');
   if(c.letra) pintarLetra(tmp,c.letra,n);
-  let cuerpo='', grupo='';
+  const enBlanco = nodo => nodo.classList.contains('l-le') && !nodo.textContent.trim();
+  let cuerpo='', grupo='', conCarne=false;
   for(const nodo of [...tmp.children]){
-    if(nodo.classList.contains('l-sec') && grupo){ cuerpo+=`<div class="grupo-print">${grupo}</div>`; grupo=''; }
+    const corta = (nodo.classList.contains('l-sec') || enBlanco(nodo)) && conCarne;
+    if(corta){ cuerpo+=`<div class="grupo-print">${grupo}</div>`; grupo=''; conCarne=false; }
+    if(enBlanco(nodo) && !grupo) continue;          // no arrastramos blancos al principio
     grupo+=nodo.outerHTML;
+    if(!enBlanco(nodo)) conCarne=true;
   }
   if(grupo) cuerpo+=`<div class="grupo-print">${grupo}</div>`;
 
@@ -3148,6 +3191,90 @@ function imprimirCancion(c){
 }
 $('#fichaImprimir').onclick=()=>{ if(fichaActual) imprimirCancion(fichaActual); };
 
+
+/* ============================================================
+   Ver el acorde tocándolo encima de la letra
+   ============================================================ */
+let globoSpan=null, globoTemp=null;
+
+function acordeDesdeTexto(txt,c){
+  const m=String(txt||'').match(ACORDE_RE);
+  if(!m) return null;
+  const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
+           b:m[3]&&!/^\d+$/.test(m[3])?normRaiz(m[3]):null};
+  if(SEMI[a.r]===undefined) return null;
+  // si la canción guarda ese acorde con una digitación tuya, mandas tú
+  const guardado=(c?acordesDe(c):[]).find(x=>x.r && idAcorde(x)===idAcorde(a) && x.dig);
+  return guardado ? {...a, dig:guardado.dig} : conDigitacion(a);
+}
+function colocarGlobo(){
+  if(!globoSpan) return;
+  const g=$('#globoAcorde'), r=globoSpan.getBoundingClientRect();
+  if(!r.width && !r.height){ cerrarGlobo(); return; }
+  const an=g.offsetWidth||96, al=g.offsetHeight||124;
+  g.style.left=Math.round(Math.max(8, Math.min(window.innerWidth-an-8, r.left+r.width/2-an/2)))+'px';
+  g.style.top =Math.round(r.top>al+14 ? r.top-al-8 : r.bottom+8)+'px';
+}
+function cerrarGlobo(){
+  clearTimeout(globoTemp);
+  if(globoSpan) globoSpan.classList.remove('tocado');
+  globoSpan=null;
+  const g=$('#globoAcorde');
+  if(g) g.classList.add('oculto');
+}
+function mostrarGloboAcorde(sp,c){
+  const a=acordeDesdeTexto(sp.dataset.ac,c);
+  if(!a){ cerrarGlobo(); return; }
+  cerrarGlobo();
+  const g=$('#globoAcorde');
+  globoSpan=sp; sp.classList.add('tocado');
+  const dig=a.dig||digEstandar(a), cej=(c&&c.cejilla)||0;
+  g.innerHTML=(dig?svgAcorde(dig,{w:76,h:92}):'<div class="sindib">sin dibujo</div>')+
+    `<span class="nom">${esc(textoAcorde(a))}</span>`+
+    (cej?`<span class="pie">con cejilla en ${cej}</span>`:'');
+  g.classList.remove('oculto');
+  colocarGlobo();
+  const midis=midisDeDig(dig).map(m=>m+cej);
+  if(midis.length){
+    let ac=null;
+    try{ ac=ctxAudio(); }catch(e){}
+    if(ac) midis.sort((x,y)=>y-x).forEach((m,i)=>sonarNota(m, ac.currentTime+.02+i*.045, 1.4));
+  }
+  globoTemp=setTimeout(cerrarGlobo,5000);
+}
+function activarAcordesLetra(cont){
+  if(!cont || cont.dataset.acordesOn) return;
+  cont.dataset.acordesOn='1';
+  cont.addEventListener('click', e=>{
+    const sp=e.target.closest('.ac-inline');
+    if(!sp) return;
+    e.stopPropagation();                 // que no pare el desplazamiento
+    mostrarGloboAcorde(sp, cont.id==='tocarCuerpo' ? cancionTocando : fichaActual);
+  });
+}
+document.addEventListener('click', e=>{
+  if(globoSpan && !e.target.closest('.ac-inline') && !e.target.closest('#globoAcorde')) cerrarGlobo();
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') cerrarGlobo(); });
+
+/* ============================================================
+   Los acordes de la letra suben al bloque de arriba
+   ============================================================ */
+function sincronizarAcordes(c){
+  if(!c) return 0;
+  const vistos=new Set((c.acordes||[]).map(idAcorde));
+  let nuevos=0;
+  c.acordes=c.acordes||[];
+  for(const a of acordesEnOrden(c)){
+    const k=idAcorde(a);
+    if(vistos.has(k)) continue;
+    vistos.add(k);
+    c.acordes.push(conDigitacion(a));
+    nuevos++;
+  }
+  if(nuevos) guardar();
+  return nuevos;
+}
 
 (async function arrancar(){
   const crudo = await Almacen.leer();
