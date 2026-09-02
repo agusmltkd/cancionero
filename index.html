@@ -1215,7 +1215,25 @@ const ES2EN={Do:'C',Re:'D',Mi:'E',Fa:'F',Sol:'G',La:'A',Si:'B'};
 const RAIZ_RE='(?:Sol|Do|Re|Mi|Fa|La|Si|[A-G])(?:#|♯|b|♭)?';
 const SUF_RE='(?:maj|min|dim|aug|sus|add|alt|M|m|°|º|Δ|\\+|-|[0-9]|#|b|♯|♭|\\(|\\))*';
 const ACORDE_RE=new RegExp('^('+RAIZ_RE+')('+SUF_RE+')(?:/('+RAIZ_RE+'|\\d+))?$');
-const NO_ACORDE=/^(\||\|\||x\d+|\(x\d+\)|-|:|%|N\.?C\.?)$/i;
+const NO_ACORDE=/^(\||\|\||x\d+|\(x\d+\)|\(\w{1,6}\)|-|:|%|N\.?C\.?)$/i;
+
+/* Caracteres que no se ven pero rompen el reconocimiento. Los que copias de una
+   web vienen llenos: espacios duros, de ancho cero, guiones blandos. Un solo
+   invisible pegado a un acorde y esa línea deja de contar como línea de acordes. */
+const INVISIBLES=/[\u00ad\u200b-\u200d\u2060\ufeff]/g;
+const ESPACIOS_RAROS=/[\u00a0\u2007\u202f\u205f\u3000]/g;
+const limpiaInvisibles = t => String(t).replace(INVISIBLES,'').replace(ESPACIOS_RAROS,' ');
+
+/* Acordes escritos en mayúsculas (MI, LAM, DO#7). Se aceptan sólo si van
+   enteros en mayúsculas: así "la" o "mi" en medio de un verso siguen siendo
+   palabras y no acordes. Al reescribirlos mantienen la misma longitud, con lo
+   que la alineación con la sílaba de abajo no se mueve. */
+function acordeEnMayusculas(tk){
+  if(!tk || tk.length<2 || tk!==tk.toUpperCase() || !/[A-Z]/.test(tk)) return null;
+  const n=tk.charAt(0)+tk.slice(1).toLowerCase();
+  return ACORDE_RE.test(n) ? n : null;
+}
+const esAcordeSuelto = tk => ACORDE_RE.test(tk) || !!acordeEnMayusculas(tk);
 
 function normRaiz(r){
   const m=String(r).match(/^(Sol|Do|Re|Mi|Fa|La|Si)([#♯b♭]?)$/);
@@ -1234,9 +1252,10 @@ const acordesDe=c=>(c.acordes||[]).map(a=>transportarAcorde(a, desplazamiento(c)
 const tonalidadDe=c=>{const a=(c.acordes||[]).find(x=>x.r); return a?nombreRaiz(transportarRaiz(a.r,c.transporte||0)):'';};
 
 function transportarToken(tk,n){
-  const m=tk.match(/^([([{]*)(.*?)([)\]},.;:]*)$/);
+  const m=limpiaInvisibles(tk).match(/^([([{]*)(.*?)([)\]},.;:]*)$/);
   if(!m) return tk;
-  const [,ini,medio,fin]=m;
+  const [,ini,medio0,fin]=m;
+  const medio=acordeEnMayusculas(medio0)||medio0;
   const a=medio.match(ACORDE_RE);
   if(!a) return tk;
   const raiz=nombreRaiz(transportarRaiz(a[1],n));
@@ -1247,13 +1266,15 @@ function esLineaAcordes(l){
   let t=String(l).trim(); if(!t) return false;
   // Se admite una etiqueta delante: "Intro: Mi Do#7", "Estribillo: La Sol".
   // Sin esto, esa palabra suelta hacía que la línea entera dejara de contar.
+  t=limpiaInvisibles(t);
   const et=t.match(/^([^:]{1,24}):\s+(\S.*)$/);
-  if(et && !ACORDE_RE.test(et[1].trim())) t=et[2];
+  if(et && !esAcordeSuelto(et[1].trim())) t=et[2];
   let ac=0, otros=0;
   for(const tk of t.split(/\s+/)){
+    if(/^[([{].{1,10}[)\]}]$/.test(tk) && !ACORDE_RE.test(tk)) continue;   // (bis), (x2), (suave)
     const limpio=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
     if(!limpio || NO_ACORDE.test(limpio)) continue;
-    if(ACORDE_RE.test(limpio)) ac++; else otros++;
+    if(esAcordeSuelto(limpio)) ac++; else otros++;
   }
   return ac>0 && otros===0;
 }
@@ -1310,8 +1331,8 @@ function resaltarAcordes(linea){
   return String(linea).split(/(\s+)/).map(p=>{
     if(!p) return '';
     if(/^\s+$/.test(p)) return esc(p);
-    const limpio=p.replace(/^[([{]+|[)\]},.;:]+$/g,'');
-    if(!limpio || NO_ACORDE.test(limpio) || !ACORDE_RE.test(limpio)) return esc(p);
+    const limpio=limpiaInvisibles(p).replace(/^[([{]+|[)\]},.;:]+$/g,'');
+    if(!limpio || NO_ACORDE.test(limpio) || !esAcordeSuelto(limpio)) return esc(p);
     return `<span class="ac-inline" data-ac="${esc(limpio)}">${esc(p)}</span>`;
   }).join('');
 }
@@ -2061,7 +2082,7 @@ const SECCIONES=/^\s*(intro|introducci[oó]n|verso|estrofa|pre[\s-]?estribillo|e
 const BASURA=/^\s*(tabbed by|transcri|chords by|tab by|acordes por|https?:\/\/|www\.)/i;
 
 function limpiarLetra(txt){
-  let lineas = String(txt||'').replace(/\r\n?/g,'\n').replace(/\t/g,'    ').split('\n');
+  let lineas = limpiaInvisibles(String(txt||'')).replace(/\r\n?/g,'\n').replace(/\t/g,'    ').split('\n');
   let capo = null;
   lineas = lineas.filter(li=>{
     const m = li.match(/^\s*(capo|cejilla|traste)\D{0,12}(\d{1,2})\s*$/i);
@@ -2355,8 +2376,9 @@ function extraerAcordesDeLetra(txt){
   const vistos=new Set(), lista=[];
   for(const linea of String(txt||'').split('\n')){
     if(!esLineaAcordes(linea)) continue;
-    for(const tk of linea.trim().split(/\s+/)){
-      const limpio=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+    for(const tk of limpiaInvisibles(linea).trim().split(/\s+/)){
+      const bruto=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+      const limpio=acordeEnMayusculas(bruto)||bruto;
       const m=limpio.match(ACORDE_RE);
       if(!m) continue;
       const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
@@ -2368,9 +2390,28 @@ function extraerAcordesDeLetra(txt){
   }
   return lista;
 }
+/* Cuando una línea casi es de acordes, dice cuál es el elemento que la
+   descarta. Es la pregunta que uno se hace mirando la pantalla: los acordes
+   están ahí encima, ¿por qué no los coge? */
+function porQueNoEsAcordes(texto){
+  const lineas=String(texto||'').split('\n');
+  for(let i=0;i<lineas.length;i++){
+    const l=limpiaInvisibles(lineas[i]).trim();
+    if(!l || esLineaAcordes(lineas[i])) continue;
+    let ac=0; const raros=[];
+    for(const tk of l.split(/\s+/)){
+      if(/^[([{].{1,10}[)\]}]$/.test(tk) && !ACORDE_RE.test(tk)) continue;
+      const limpio=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+      if(!limpio || NO_ACORDE.test(limpio)) continue;
+      if(esAcordeSuelto(limpio)) ac++; else if(raros.length<2) raros.push(limpio);
+    }
+    if(ac>=2 && raros.length) return `Línea ${i+1}: reconozco ${ac} acordes, pero no «${raros.join('» ni «')}». Quítalo de esa línea y ya los cogerá.`;
+  }
+  return null;
+}
 $('#btnAcordesLetra').onclick=()=>{
   const lista=extraerAcordesDeLetra($('#fLetra').value);
-  if(!lista.length){ aviso('No veo líneas de acordes en la letra.'); return; }
+  if(!lista.length){ aviso(porQueNoEsAcordes($('#fLetra').value) || 'No veo líneas de acordes en la letra.'); return; }
   let nuevos=0;
   lista.forEach(a=>{ if(!borrador.acordes.some(x=>idAcorde(x)===idAcorde(a))){ borrador.acordes.push(a); nuevos++; } });
   pintarElegidos();
@@ -2666,7 +2707,7 @@ $('#mbListas').onclick = ()=>abrirListas();
 /* ============================================================
    Ajustes, copias, arranque
    ============================================================ */
-const VERSION='2026-09-02d · reconoce lineas de acordes con etiqueta';
+const VERSION='2026-09-02e · invisibles, mayusculas y diagnostico';
 
 /* La PWA guarda una copia para funcionar sin conexión, y esa copia manda sobre
    el archivo del servidor hasta que caduca. Esto la tira y vuelve a pedir todo. */
@@ -3037,8 +3078,9 @@ function acordesEnOrden(c){
   const out=[];
   for(const linea of String(c.letra||'').split('\n')){
     if(!esLineaAcordes(linea)) continue;
-    for(const tk of linea.trim().split(/\s+/)){
-      const m=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'').match(ACORDE_RE);
+    for(const tk of limpiaInvisibles(linea).trim().split(/\s+/)){
+      const bruto=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
+      const m=(acordeEnMayusculas(bruto)||bruto).match(ACORDE_RE);
       if(!m) continue;
       const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
                b:m[3]&&!/^\d+$/.test(m[3])?normRaiz(m[3]):null};
