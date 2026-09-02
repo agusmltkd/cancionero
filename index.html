@@ -872,6 +872,13 @@ Se me va la vida, se me va..."></textarea>
       <h4>Espacio</h4>
       <p class="aviso" id="infoEspacio"></p>
     </div>
+    <div class="bloque">
+      <h4>Versión</h4>
+      <p class="aviso" id="infoVersion"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn" id="btnActualizar">Buscar versión nueva</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2634,10 +2641,29 @@ $('#mbListas').onclick = ()=>abrirListas();
 /* ============================================================
    Ajustes, copias, arranque
    ============================================================ */
+const VERSION='2026-09-02 · acordes marcados, globo y ensayo';
+
+/* La PWA guarda una copia para funcionar sin conexión, y esa copia manda sobre
+   el archivo del servidor hasta que caduca. Esto la tira y vuelve a pedir todo. */
+async function forzarActualizacion(){
+  aviso('Borrando la copia guardada…');
+  try{
+    if(window.caches){
+      for(const k of await caches.keys()) await caches.delete(k);
+    }
+    if(navigator.serviceWorker){
+      for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+    }
+  }catch(e){}
+  location.replace(location.pathname+'?v='+Date.now());
+}
+
 function pintarAjustes(){
   $$('#hojaAjustes [data-notacion]').forEach(b=>
     b.setAttribute('aria-pressed', b.dataset.notacion===estado.notacion));
   const kb = Math.round(JSON.stringify(estado).length/1024);
+  $('#infoVersion').textContent = `Estás usando la versión ${VERSION}`+
+    (navigator.serviceWorker ? '. Si acabas de subir un cambio y no lo ves, pulsa el botón: borra la copia guardada y recarga.' : '.');
   $('#infoEspacio').textContent = `El cancionero ocupa unos ${kb} KB. Las portadas subidas desde el móvil pesan; las buscadas por internet, casi nada.`;
 }
 $$('#hojaAjustes [data-notacion]').forEach(b=>b.onclick=()=>{
@@ -2671,6 +2697,7 @@ $('#btnRecalcularDig').onclick = ()=>{
   if($('#hojaFicha').classList.contains('abierta') && fichaActual) abrirFicha(fichaActual.id);
   aviso(`${hechos} ${hechos===1?'acorde actualizado':'acordes actualizados'} a su forma estándar.`);
 };
+$('#btnActualizar').onclick = forzarActualizacion;
 $('#btnExportar').onclick = ()=>{
   const blob = new Blob([JSON.stringify(estado,null,2)],{type:'application/json'});
   const a = document.createElement('a');
