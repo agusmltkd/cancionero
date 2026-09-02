@@ -1244,7 +1244,11 @@ function transportarToken(tk,n){
   return ini+raiz+(a[2]||'')+bajo+fin;
 }
 function esLineaAcordes(l){
-  const t=String(l).trim(); if(!t) return false;
+  let t=String(l).trim(); if(!t) return false;
+  // Se admite una etiqueta delante: "Intro: Mi Do#7", "Estribillo: La Sol".
+  // Sin esto, esa palabra suelta hacía que la línea entera dejara de contar.
+  const et=t.match(/^([^:]{1,24}):\s+(\S.*)$/);
+  if(et && !ACORDE_RE.test(et[1].trim())) t=et[2];
   let ac=0, otros=0;
   for(const tk of t.split(/\s+/)){
     const limpio=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
@@ -2662,7 +2666,7 @@ $('#mbListas').onclick = ()=>abrirListas();
 /* ============================================================
    Ajustes, copias, arranque
    ============================================================ */
-const VERSION='2026-09-02c · acordes de la letra en toda la app';
+const VERSION='2026-09-02d · reconoce lineas de acordes con etiqueta';
 
 /* La PWA guarda una copia para funcionar sin conexión, y esa copia manda sobre
    el archivo del servidor hasta que caduca. Esto la tira y vuelve a pedir todo. */
@@ -3330,7 +3334,15 @@ function pintarTiraAcordes(c){
   if(bt) bt.setAttribute('aria-pressed', verAcordesTocar);
   if(!verAcordesTocar) return;
   const lista=acordesParaTocar(c);
-  if(!lista.length){ tira.innerHTML='<span class="vacio-min">Esta canción no tiene acordes guardados.</span>'; return; }
+  if(!lista.length){
+    const hayLetra=!!String(c.letra||'').trim();
+    tira.innerHTML='<span class="vacio-min">'+(hayLetra
+      ? 'No reconozco acordes en esta letra. Suelen ir en su propia línea, encima de lo que cantas.'
+      : 'Esta canción no tiene acordes ni letra guardados.')+
+      '</span><button class="btn ghost" id="tiraEditar" style="flex:none;align-self:center">Editar</button>';
+    $('#tiraEditar').onclick=()=>{ cerrarTocar(); abrirEditor(c); };
+    return;
+  }
   tira.innerHTML=lista.map((a,i)=>{
     const d=a.dig||digEstandar(a);
     return `<span class="ac-carta" data-i="${i}">
