@@ -1224,16 +1224,29 @@ const INVISIBLES=/[\u00ad\u200b-\u200d\u2060\ufeff]/g;
 const ESPACIOS_RAROS=/[\u00a0\u2007\u202f\u205f\u3000]/g;
 const limpiaInvisibles = t => String(t).replace(INVISIBLES,'').replace(ESPACIOS_RAROS,' ');
 
-/* Acordes escritos en mayúsculas (MI, LAM, DO#7). Se aceptan sólo si van
-   enteros en mayúsculas: así "la" o "mi" en medio de un verso siguen siendo
-   palabras y no acordes. Al reescribirlos mantienen la misma longitud, con lo
-   que la alineación con la sílaba de abajo no se mueve. */
-function acordeEnMayusculas(tk){
-  if(!tk || tk.length<2 || tk!==tk.toUpperCase() || !/[A-Z]/.test(tk)) return null;
-  const n=tk.charAt(0)+tk.slice(1).toLowerCase();
+/* Los acordes se escriben de mil maneras: "Do", "DO", "DOm", "LAm", "RE7",
+   "Do/SOL". Se normaliza la raíz y el bajo sin mirar mayúsculas y el sufijo a
+   minúsculas, con dos condiciones: que el token empiece por mayúscula (si no,
+   "la" o "mi" de un verso pasarían por acordes) y que lo que salga sea un
+   acorde de verdad. Sólo cambian mayúsculas por minúsculas, así que la palabra
+   mide lo mismo y no se descoloca de su sílaba.
+   Aviso: con todo en mayúsculas, "DOM" se lee como do menor, que es lo normal
+   en los cancioneros de aquí; si alguna vez querías do mayor con séptima,
+   escríbelo "DOM7" en mixto o "Cmaj7". */
+const ACORDE_LIBRE=new RegExp(
+  '^((?:sol|do|re|mi|fa|la|si|[a-g])(?:#|♯|b|♭)?)'+
+  '((?:maj|min|dim|aug|sus|add|alt|M|m|°|º|Δ|\\+|-|[0-9]|#|b|♯|♭|\\(|\\))*)'+
+  '(?:/((?:sol|do|re|mi|fa|la|si|[a-g])(?:#|♯|b|♭)?))?$','i');
+function normalizaAcorde(tk){
+  if(!tk || ACORDE_RE.test(tk)) return null;      // ya viene bien escrito
+  if(!/^[A-Z]/.test(tk)) return null;   // un acorde siempre empieza por mayúscula
+  const m=tk.match(ACORDE_LIBRE);
+  if(!m) return null;
+  const cap = x => x ? x.charAt(0).toUpperCase()+x.slice(1).toLowerCase() : x;
+  const n = cap(m[1]) + (m[2]||'').toLowerCase() + (m[3]?'/'+cap(m[3]):'');
   return ACORDE_RE.test(n) ? n : null;
 }
-const esAcordeSuelto = tk => ACORDE_RE.test(tk) || !!acordeEnMayusculas(tk);
+const esAcordeSuelto = tk => ACORDE_RE.test(tk) || !!normalizaAcorde(tk);
 
 function normRaiz(r){
   const m=String(r).match(/^(Sol|Do|Re|Mi|Fa|La|Si)([#♯b♭]?)$/);
@@ -1255,7 +1268,7 @@ function transportarToken(tk,n){
   const m=limpiaInvisibles(tk).match(/^([([{]*)(.*?)([)\]},.;:]*)$/);
   if(!m) return tk;
   const [,ini,medio0,fin]=m;
-  const medio=acordeEnMayusculas(medio0)||medio0;
+  const medio=normalizaAcorde(medio0)||medio0;
   const a=medio.match(ACORDE_RE);
   if(!a) return tk;
   const raiz=nombreRaiz(transportarRaiz(a[1],n));
@@ -2378,7 +2391,7 @@ function extraerAcordesDeLetra(txt){
     if(!esLineaAcordes(linea)) continue;
     for(const tk of limpiaInvisibles(linea).trim().split(/\s+/)){
       const bruto=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
-      const limpio=acordeEnMayusculas(bruto)||bruto;
+      const limpio=normalizaAcorde(bruto)||bruto;
       const m=limpio.match(ACORDE_RE);
       if(!m) continue;
       const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
@@ -2707,7 +2720,7 @@ $('#mbListas').onclick = ()=>abrirListas();
 /* ============================================================
    Ajustes, copias, arranque
    ============================================================ */
-const VERSION='2026-09-02e · invisibles, mayusculas y diagnostico';
+const VERSION='2026-09-02f · acordes en cualquier mezcla de mayusculas';
 
 /* La PWA guarda una copia para funcionar sin conexión, y esa copia manda sobre
    el archivo del servidor hasta que caduca. Esto la tira y vuelve a pedir todo. */
@@ -3080,7 +3093,7 @@ function acordesEnOrden(c){
     if(!esLineaAcordes(linea)) continue;
     for(const tk of limpiaInvisibles(linea).trim().split(/\s+/)){
       const bruto=tk.replace(/^[([{]+|[)\]},.;:]+$/g,'');
-      const m=(acordeEnMayusculas(bruto)||bruto).match(ACORDE_RE);
+      const m=(normalizaAcorde(bruto)||bruto).match(ACORDE_RE);
       if(!m) continue;
       const a={r:normRaiz(m[1]), q:(m[2]||'').replace(/♯/g,'#').replace(/♭/g,'b'),
                b:m[3]&&!/^\d+$/.test(m[3])?normRaiz(m[3]):null};
