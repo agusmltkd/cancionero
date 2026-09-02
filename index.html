@@ -462,6 +462,18 @@ main{padding:16px var(--pad) 90px}
   display:flex;gap:8px;align-items:center;justify-content:center;
 }
 
+/* ---------- tira de acordes del modo tocar ---------- */
+.tocar-acordes{
+  display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  padding:10px var(--pad);border-bottom:1px solid var(--line);
+  background:rgba(32,24,18,.5);scrollbar-width:none;
+}
+.tocar-acordes::-webkit-scrollbar{display:none}
+.tocar-acordes.oculto{display:none}
+.tocar-acordes .ac-carta{flex:none;min-width:56px;padding:6px 7px 4px}
+.tocar-acordes .ac-carta:active{border-color:var(--albero)}
+.tocar-acordes .vacio-min{align-self:center}
+
 /* ---------- listas ---------- */
 .lista-fila{
   display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);
@@ -907,7 +919,9 @@ Se me va la vida, se me va..."></textarea>
     <span class="grupo"><button id="cejaMenos" aria-label="Bajar cejilla">−</button><b id="cejaValor">0</b><button id="cejaMas" aria-label="Subir cejilla">+</button></span>
     <span>Letra</span>
     <span class="grupo"><button id="letraMenos" aria-label="Letra más pequeña">A</button><button id="letraMas" aria-label="Letra más grande" style="font-size:19px">A</button></span>
+    <button class="btn ghost" id="btnVerAcordes" aria-pressed="true" style="padding:6px 11px;font-size:12px;text-transform:none;letter-spacing:0">Acordes</button>
   </div>
+  <div class="tocar-acordes" id="tocarAcordes"></div>
   <div class="tocar-cuerpo" id="tocarCuerpo"></div>
   <div class="tocar-pie">
     <button class="btn cta" id="tocarDesplazar">▶ Desplazar</button>
@@ -1805,6 +1819,7 @@ function nuevaCancion(){
 function abrirEditor(c){
   editandoId = c ? c.id : null;
   borrador = c ? JSON.parse(JSON.stringify(c)) : nuevaCancion();
+  if(typeof sincronizarAcordes==='function') sincronizarAcordes(borrador, false);
   $('#editorTitulo').textContent = c ? 'Editar canción' : 'Añadir canción';
   $('#btnBorrar').classList.toggle('oculto', !c);
   $('#fTitulo').value=borrador.titulo; $('#fArtista').value=borrador.artista;
@@ -2380,11 +2395,10 @@ $('#btnGuardar').onclick = ()=>{
     enlace:$('#fEnlace').value.trim(), notas:$('#fNotas').value, letra:$('#fLetra').value
   });
   borrador.patron.bpm = +$('#fBpm').value||90;
-  let autoAcordes=0;
-  if(!borrador.acordes.length && borrador.letra){
-    const lista=extraerAcordesDeLetra(borrador.letra);
-    if(lista.length){ borrador.acordes=lista; autoAcordes=lista.length; }
-  }
+  // Todo acorde que aparezca en la letra entra en la lista de la canción,
+  // esté la lista vacía o no. Los que hayas añadido a mano se quedan.
+  const autoAcordes = (typeof sincronizarAcordes==='function')
+    ? sincronizarAcordes(borrador, false) : 0;
   if(editandoId){
     const i=estado.canciones.findIndex(c=>c.id===editandoId);
     if(i>=0) estado.canciones[i]=borrador;
@@ -2468,6 +2482,8 @@ function pintarTocar(){
   if(!c){ cerrarTocar(); return; }
   cancionTocando = c;
   if(typeof cerrarGlobo==='function') cerrarGlobo();
+  if(typeof sincronizarAcordes==='function') sincronizarAcordes(c);
+  if(typeof pintarTiraAcordes==='function') pintarTiraAcordes(c);
   $('#tocarTitulo').textContent = c.titulo || 'Sin título';
   const desp = desplazamiento(c);
   const tabAtascada = desp<0 && String(c.letra||'').split('\n').some(l=>
@@ -2540,6 +2556,11 @@ function cambiaCejilla(n){
   cancionTocando.cejilla = Math.max(0, Math.min(12,(cancionTocando.cejilla||0)+n));
   guardar(); pintarTocar();
 }
+$('#btnVerAcordes').onclick = ()=>{
+  verAcordesTocar=!verAcordesTocar;
+  localStorage.setItem('cancionero:ver-acordes', verAcordesTocar?'si':'no');
+  if(cancionTocando) pintarTiraAcordes(cancionTocando);
+};
 $('#tocarCerrar').onclick = cerrarTocar;
 $('#tocarDesplazar').onclick = alternarScroll;
 $('#tocarCuerpo').onclick = ()=>{ if(scrollActivo) alternarScroll(); };
@@ -2641,7 +2662,7 @@ $('#mbListas').onclick = ()=>abrirListas();
 /* ============================================================
    Ajustes, copias, arranque
    ============================================================ */
-const VERSION='2026-09-02 · acordes marcados, globo y ensayo';
+const VERSION='2026-09-02c · acordes de la letra en toda la app';
 
 /* La PWA guarda una copia para funcionar sin conexión, y esa copia manda sobre
    el archivo del servidor hasta que caduca. Esto la tira y vuelve a pedir todo. */
@@ -3269,16 +3290,17 @@ function mostrarGloboAcorde(sp,c){
   }
   globoTemp=setTimeout(cerrarGlobo,5000);
 }
-function activarAcordesLetra(cont){
-  if(!cont || cont.dataset.acordesOn) return;
-  cont.dataset.acordesOn='1';
-  cont.addEventListener('click', e=>{
-    const sp=e.target.closest('.ac-inline');
-    if(!sp) return;
-    e.stopPropagation();                 // que no pare el desplazamiento
-    mostrarGloboAcorde(sp, cont.id==='tocarCuerpo' ? cancionTocando : fichaActual);
-  });
-}
+/* En captura: así se atiende antes que el listener del contenedor que para el
+   desplazamiento, sin depender de en qué orden se registraron. Se pone una sola
+   vez para toda la app, valga la letra de la ficha o la del modo tocar. */
+function activarAcordesLetra(){ /* ya no hace falta enganchar nada por contenedor */ }
+document.addEventListener('click', e=>{
+  const sp=e.target && e.target.closest ? e.target.closest('.ac-inline') : null;
+  if(!sp) return;
+  e.stopPropagation();
+  const cont=sp.closest('#tocarCuerpo, #fichaLetra');
+  mostrarGloboAcorde(sp, (cont && cont.id==='tocarCuerpo') ? cancionTocando : fichaActual);
+}, true);
 document.addEventListener('click', e=>{
   if(globoSpan && !e.target.closest('.ac-inline') && !e.target.closest('#globoAcorde')) cerrarGlobo();
 });
@@ -3287,8 +3309,46 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') cerrarGlobo(); })
 /* ============================================================
    Los acordes de la letra suben al bloque de arriba
    ============================================================ */
-function sincronizarAcordes(c){
+/* Los guardados más los que sólo estén en la letra, sin repetir y ya
+   transportados a lo que suena de verdad con la cejilla puesta. */
+function acordesParaTocar(c){
+  if(!c) return [];
+  const lista=(c.acordes||[]).slice(), vistos=new Set(lista.map(idAcorde));
+  for(const a of acordesEnOrden(c)){
+    const k=idAcorde(a);
+    if(vistos.has(k)) continue;
+    vistos.add(k); lista.push(conDigitacion(a));
+  }
+  return lista.map(a=>transportarAcorde(conDigitacion(a), desplazamiento(c)));
+}
+
+let verAcordesTocar = localStorage.getItem('cancionero:ver-acordes')!=='no';
+function pintarTiraAcordes(c){
+  const tira=$('#tocarAcordes'); if(!tira) return;
+  tira.classList.toggle('oculto', !verAcordesTocar);
+  const bt=$('#btnVerAcordes');
+  if(bt) bt.setAttribute('aria-pressed', verAcordesTocar);
+  if(!verAcordesTocar) return;
+  const lista=acordesParaTocar(c);
+  if(!lista.length){ tira.innerHTML='<span class="vacio-min">Esta canción no tiene acordes guardados.</span>'; return; }
+  tira.innerHTML=lista.map((a,i)=>{
+    const d=a.dig||digEstandar(a);
+    return `<span class="ac-carta" data-i="${i}">
+      <span class="dib">${d?svgAcorde(d,{w:52,h:64}):'<span class="sindib">sin dibujo</span>'}</span>
+      <span class="nom">${esc(etiquetaAcorde(a))}</span></span>`;
+  }).join('');
+  $$('.ac-carta',tira).forEach(el=>el.onclick=()=>{
+    const a=lista[+el.dataset.i], d=a.dig||digEstandar(a);
+    const midis=midisDeDig(d).map(m=>m+(c.cejilla||0));
+    if(!midis.length) return;
+    let ac=null; try{ ac=ctxAudio(); }catch(e){}
+    if(ac) midis.sort((x,y)=>y-x).forEach((m,k)=>sonarNota(m, ac.currentTime+.02+k*.045,1.5));
+  });
+}
+
+function sincronizarAcordes(c, persistir){
   if(!c) return 0;
+  if(persistir===undefined) persistir=true;
   const vistos=new Set((c.acordes||[]).map(idAcorde));
   let nuevos=0;
   c.acordes=c.acordes||[];
@@ -3299,7 +3359,7 @@ function sincronizarAcordes(c){
     c.acordes.push(conDigitacion(a));
     nuevos++;
   }
-  if(nuevos) guardar();
+  if(nuevos && persistir) guardar();
   return nuevos;
 }
 
@@ -3310,8 +3370,11 @@ function sincronizarAcordes(c){
       const d = JSON.parse(crudo);
       if(d && Array.isArray(d.canciones)){
         estado = {notacion:d.notacion||'latina', canciones:d.canciones, listas:Array.isArray(d.listas)?d.listas:[]};
+        let puestosAlDia=0;
         estado.canciones.forEach(c=>{ c.letra=c.letra||''; c.transporte=c.transporte||0; c.grabaciones=c.grabaciones||[];
-          (c.acordes||[]).forEach(a=>{ if(!a.dig && a.r) a.dig=digEstandar(a); }); });
+          (c.acordes||[]).forEach(a=>{ if(!a.dig && a.r) a.dig=digEstandar(a); });
+          puestosAlDia += sincronizarAcordes(c, false); });
+        if(puestosAlDia) guardar();
       }
     }catch(e){}
   }
